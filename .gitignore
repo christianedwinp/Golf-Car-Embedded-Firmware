@@ -1,0 +1,9 @@
+/project/keil/*
+!/project/keil/*.uvoptx
+!/project/keil/*.uvprojx
+!/project/keil/*.uvproj
+
+/build/*
+
+.ycm_extra_conf.py
+*.swp
