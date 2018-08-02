@@ -7,8 +7,7 @@
   * @brief   ------------------------
   *          | PA10  - USART3(Tx)      |
   *          | PA11  - USART3(Rx)      |
-  *          | PC5   - RE              |
-  *          | PC4   - DE			   |
+  *          | PC12  - RE & DE         |
   *           ------------------------
   *
 @verbatim
@@ -30,6 +29,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "bsp_eps.h"
 #include "bsp_delay.h"
+#include "bsp_time.h"
 #include "pin_configuration.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -126,24 +126,24 @@ void BSP_EpsInit(void)
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
-	RCC_APB2PeriphClockCmd(RS485_TX_RX_CLK, ENABLE);
-	RCC_APB2PeriphClockCmd( RS485_RE_DE_CLK, ENABLE); 	 
+	RCC_APB2PeriphClockCmd(RS485_CLK, ENABLE);
+	RCC_APB2PeriphClockCmd( RS485_CLK, ENABLE); 	 
 	RCC_APB1PeriphClockCmd(RS485_USART_CLK, ENABLE);
 
-	GPIO_InitStructure.GPIO_Pin =  RS485_DE | RS485_RE;	
+	GPIO_InitStructure.GPIO_Pin =  RS485_RE_DE;	
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-	GPIO_Init(RS485_RE_DE_PORT, &GPIO_InitStructure); 	
+	GPIO_Init(RS485_PORT, &GPIO_InitStructure); 	
 
 	
 	GPIO_InitStructure.GPIO_Pin = RS485_TX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; 		//复用推挽输出
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(RS485_TX_RX_PORT, &GPIO_InitStructure);    
+	GPIO_Init(RS485_PORT, &GPIO_InitStructure);    
 
 	GPIO_InitStructure.GPIO_Pin = RS485_RX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
-	GPIO_Init(RS485_TX_RX_PORT, &GPIO_InitStructure);   
+	GPIO_Init(RS485_PORT, &GPIO_InitStructure);   
 
 
 	USART_InitStructure.USART_BaudRate = 115200;				//波特率设置：9600
@@ -170,7 +170,7 @@ void BSP_EpsSendCmd(const uint8_t* ptr, uint16_t len)
 	uint8_t i = 0;
 	RE = 1;
 	DE = 1;
-	BSP_DelayUs(10);
+	delay_us(10);
 	
 	for(i=0;i<len;i++)		//循环发送数据
 	{		   
@@ -180,7 +180,7 @@ void BSP_EpsSendCmd(const uint8_t* ptr, uint16_t len)
 	while( (RS485_USART->SR&0x40) == 0 );
 	gEpsBufferHead = 0;
 	
-	BSP_DelayUs(50);
+	delay_us(50);
 	RE = 0;
 	DE = 0;
 }

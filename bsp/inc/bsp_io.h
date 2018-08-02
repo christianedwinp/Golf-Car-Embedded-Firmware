@@ -48,7 +48,7 @@
 /* Exported functions --------------------------------------------------------*/  
 
 
-void BSP_IoInit(void);
+void BSP_LEDTestInit(void);
 
 #ifdef __cplusplus
 }

@@ -19,28 +19,28 @@ void BSP_TimerInit(uint16_t freq)
 		arr = 10000/(freq)-1;
 	}
 	
-	RCC_APB1PeriphClockCmd(ENC_TIMER_CLK, ENABLE);     		//使能TIM1时钟
+	RCC_APB2PeriphClockCmd(ENC_TIMER_CLK, ENABLE);     		//使能TIM1时钟
 	
-	TIM_TimeBaseInitStructure.TIM_Period = arr; 					//自动重装载值
-	TIM_TimeBaseInitStructure.TIM_Prescaler = 7200-1;  		    	//定时器分频, 每次基数72Mhz/7200=10Khz
+	TIM_TimeBaseInitStructure.TIM_Period = arr; 										//自动重装载值
+	TIM_TimeBaseInitStructure.TIM_Prescaler = 7200-1;  		    			//定时器分频, 每次基数72Mhz/7200=10Khz
 	TIM_TimeBaseInitStructure.TIM_CounterMode= TIM_CounterMode_Up; 	//向上计数模式
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1; 
 
-	TIM_TimeBaseInit(ENC_TIMER,&TIM_TimeBaseInitStructure);				//初始化TIM2
-	TIM_ITConfig(ENC_TIMER,TIM_IT_Update,ENABLE); 						//允许定时器2更新中断
-	TIM_Cmd(ENC_TIMER,ENABLE); 											//使能定时器2
+	TIM_TimeBaseInit(ENC_TIMER,&TIM_TimeBaseInitStructure);		//初始化TIM1
+	TIM_ITConfig(ENC_TIMER,TIM_IT_Update,ENABLE); 						//允许定时器1更新中断
+	TIM_Cmd(ENC_TIMER,ENABLE); 																//使能定时器1
 
-	NVIC_InitStructure.NVIC_IRQChannel=TIM2_IRQn; 					//定时器2中断
+	NVIC_InitStructure.NVIC_IRQChannel=TIM1_UP_IRQn; 							//定时器1中断
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0x03; 		//抢占优先级3
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority=0x03; 			//子优先级3
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority=0x03; 					//子优先级3
 	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
 
 
-void TIM2_IRQHandler(void)
+void TIM1_UP_IRQHandler(void)
 {
-	if(TIM_GetITStatus(ENC_TIMER,TIM_IT_Update) ==SET ) 
+	if(TIM_GetITStatus(ENC_TIMER,TIM_IT_Update) == SET ) 
 	{
 		gTimerFlag = 1;
 	}

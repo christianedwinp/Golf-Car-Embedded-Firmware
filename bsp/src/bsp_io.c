@@ -45,18 +45,16 @@
 */
 
 
-void BSP_IoInit(void)
+void BSP_LEDTestInit(void)
 {	
 	GPIO_InitTypeDef GPIO_InitStructure;
-
-	RCC_APB2PeriphClockCmd( TEST_LED_CLK, ENABLE); 	 // 使能PB端口时钟 
+	RCC_APB2PeriphClockCmd( TEST_LED_CLK, ENABLE); 
 	
-
 	GPIO_InitStructure.GPIO_Pin =  TEST_LED_1 | TEST_LED_2;	
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &GPIO_InitStructure); 					 //初始化PB端口
-	GPIO_SetBits(TEST_LED_PORT, TEST_LED_1 | TEST_LED_2);	 		 // 关闭所有LED	
+	GPIO_Init(GPIOB, &GPIO_InitStructure); 				
+	GPIO_SetBits(TEST_LED_PORT, TEST_LED_1 | TEST_LED_2);	 		 
 }
 
 
