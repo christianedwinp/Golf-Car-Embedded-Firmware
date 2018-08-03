@@ -15,23 +15,29 @@
 enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
 
 extern uint32_t start1,finish1, delta1, start2,finish2, delta2;
+extern volatile u32 Millis;
 extern int rising1,rising2, transmitFlag1, transmitFlag2;
 
+uint32_t transmittime,receivetime,distance;
 const uint8_t kEncoderFrequency = 20;
 float kControllerP = 1.5;
 float kControllerI = 0.3;
 float kControllerD = 0;
+float kControllerDeadzoneHighRatioR = 0.07;
+float kControllerDeadzoneHighRatioL = 0.04;
+
 uint16_t kControlSpeedMax = 1500;
 uint16_t kControllerDeadzoneHigh = 20;
 uint16_t kControllerDeadzoneLow = 15;
 uint16_t kControllerDeadzoneLowLow = 5;
 uint16_t kControllerDeadzone = 10;
-float kControllerDeadzoneHighRatioR = 0.07;
-float kControllerDeadzoneHighRatioL = 0.04;
-
-const uint16_t kHeartbeatMax = 9;
 uint16_t gHeartbeatCnt = 0;
+const uint16_t kHeartbeatMax = 9;
 static uint16_t velocity_flag = 0;
+
+unsigned char UltrSendflag = 0x00;
+unsigned char ReceiveIO = 0x00;
+
 
 /*  ONLY FOR DEBUG
 *   This func is used to configure MCO which can help debug clock
@@ -133,12 +139,12 @@ void steeringController(int16_t target, int16_t current, int16_t velocity)
 	
 	BSP_EpsSet(speed);
 }
-
+RCC_ClocksTypeDef rcc;
 int main(void)
 {
 	uint8_t led3 = 0;
 	int16_t last_angle_target = 0;
-	
+	RCC_GetClocksFreq(&rcc);
 	Systick_Init();
 	BSP_Init();
 	BSP_DelayInit();	         		// Init delpy parameters
@@ -147,20 +153,21 @@ int main(void)
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
 	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
-	//BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
+	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
 	BSP_UltrasonicInit();				
 	
-	delay_ms(500);
+//	
+	BSP_Timer8PWM();
 	BSP_TimerInit(kEncoderFrequency);
 	
-	IWDG_Init(4, 120);	// 192ms
-	IWDG_ReloadCounter();
+//	IWDG_Init(4, 120);	// 192ms
+//	IWDG_ReloadCounter();
 	
 	// flash out
 	BSP_EncoderRead();
 	BSP_EncoderRead();
 	BSP_EncoderRead();
-	
+	delay_ms(500);
 	printf("all initialized  \n");
 	
 	while (1)
@@ -190,15 +197,15 @@ int main(void)
 				led3 = 0;
 			}
 		}
-		
-		// timeout send heartbeat to keep alive
+//		
+//		// timeout send heartbeat to keep alive
 		if(gHeartbeatCnt > kHeartbeatMax)
 		{
 			gCanMsg.bms_heart = 1;
 			gHeartbeatCnt = 0;
 			BSP_CanSendBmsHeart();
 		}
-				
+//				
 		if (gCanMsg.is_auto && gCanMsg.status )
 		{
 			if((gCanMsg.status & BSP_CAN_UPDATE_COMMAND ) && fabs(gCanMsg.cmd_targetAngle-last_angle_target) > 3)
@@ -219,34 +226,52 @@ int main(void)
 			gCanMsg.status = 0;
 		}
 		
-		
-	
-	
-		//Ultrasonic Routine
-		for(int j=1; j<5; j++){
-			selectChannel_Mux1(j); 
-			selectChannel_Mux2(j); 
-			ULTRASONIC_TRIGPORT->BRR  = ULTRASONIC_TRIG;
-			delay_us(5);
-			for(int x=0; x <8; x++){
-				ULTRASONIC_TRIGPORT->BSRR=ULTRASONIC_TRIG;
-				delay_us(10);
-				ULTRASONIC_TRIGPORT->BRR=ULTRASONIC_TRIG;
-				delay_us(10);
-			}
-			printf("ultrasonic sent  \n");
-			delay_us(100);
-			if(transmitFlag1 == 0){
-				transmitFlag1+=1;
-			}
-			if(transmitFlag2 == 0){
-				transmitFlag2+=1;
-			}
-			delay_ms(34);
-			printf("Timestamp : %u  \n", micros());
-		}
 	}
-	
-
 	return 0;
 }
+
+void SysTick_Handler()
+{
+	// time counter
+	Millis++;
+	
+			//Ultrasonic Routine
+	if((Millis%35)==0) //launch a ultrasonic in every 35ms
+	{
+		static short UltrasonicNum = 0;
+		selectChannel_Mux1(UltrasonicNum); //select the specific ultrasonic
+		selectChannel_Mux2(UltrasonicNum); 
+		UltrasonicNum++;
+		UltrasonicNum = UltrasonicNum%4;
+		
+		TIM_Cmd(TIM8, ENABLE); //enable the pwm timer for drive a ultrasonic
+		TIM8->CNT = 0;
+		UltrSendflag = 0x01;
+		transmittime = millis();
+		ReceiveIO = 0x00;
+		
+		printf("ultrasonic sent  \n");
+		
+		if((transmitFlag1 == 0)&&(UltrSendflag == 0x01)){
+			ReceiveIO = 0x01;
+			UltrSendflag = 0x00;
+			receivetime = millis();
+			transmitFlag1+=1;
+		}
+		if((transmitFlag2 == 0)&&(UltrSendflag == 0x01)){
+			ReceiveIO = 0x02;
+			UltrSendflag = 0x00;
+			receivetime = millis();
+			transmitFlag2+=1;
+		}
+	//		printf("Timestamp : %u  \n", micros());
+	 }
+	if((ReceiveIO == 0x01)||(ReceiveIO == 0x02))
+	{
+		distance = receivetime - transmittime ;
+		if(distance <= 0 )  distance = 8;
+		else distance = distance*340/1000; //unit meter
+	}
+}
+
+

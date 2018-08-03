@@ -16,10 +16,7 @@ void Systick_Init(void)
 	Millis = 0;//reset Millis
 }
 
-void SysTick_Handler()
-{
-	Millis++;
-}
+
 
 uint32_t millis()
 {

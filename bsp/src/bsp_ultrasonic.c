@@ -26,19 +26,19 @@ void initMux(){
 
 void selectChannel_Mux1(int channel){
 	switch(channel){
-		case 1:
+		case 1://00
 			MUXPORT->BRR = MUX1_CHANNEL_SELECT_A;
 			MUXPORT->BRR = MUX1_CHANNEL_SELECT_B;			
 			break;
-		case 2:
+		case 2://10
 			MUXPORT->BSRR = MUX1_CHANNEL_SELECT_A;
 			MUXPORT->BRR = MUX1_CHANNEL_SELECT_B;
 			break;
-		case 3:
+		case 3://01
 			MUXPORT->BRR = MUX1_CHANNEL_SELECT_A;
 			MUXPORT->BSRR 	= MUX1_CHANNEL_SELECT_B;
 			break;
-		case 4:
+		case 4://11
 			MUXPORT->BSRR = MUX1_CHANNEL_SELECT_A;
 			MUXPORT->BSRR	= MUX1_CHANNEL_SELECT_B;
 			break;
