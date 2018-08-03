@@ -150,11 +150,11 @@ int main(void)
 	//BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
 	BSP_UltrasonicInit();				
 	
-	delay_ms(500);
+//delay_ms(500);
 	BSP_TimerInit(kEncoderFrequency);
 	
-	IWDG_Init(4, 120);	// 192ms
-	IWDG_ReloadCounter();
+//	IWDG_Init(4, 120);	// 192ms
+//	IWDG_ReloadCounter();
 	
 	// flash out
 	BSP_EncoderRead();

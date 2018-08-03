@@ -12,8 +12,8 @@ static uint16_t fac_ms=0;							//ms延时倍乘数,在os下,代表每个节拍�
 //SYSCLK: system clock frequency
 void BSP_DelayInit(void)
 {	
- 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
-	fac_us=SystemCoreClock/8000000;						//represents the number of systick clocks required for each uS
+ 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
+	fac_us=72000000/8000000;						//represents the number of systick clocks required for each uS
 	fac_ms=(uint16_t)fac_us*1000;							//represents the number of systick clocks required for each mS
 }								    
 
