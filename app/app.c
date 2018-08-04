@@ -17,6 +17,7 @@ enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
 extern uint32_t start1,finish1, delta1, start2,finish2, delta2;
 extern volatile u32 Millis;
 extern int rising1,rising2, transmitFlag1, transmitFlag2;
+extern short PWMPeriodCnt;
 
 uint32_t transmittime,receivetime,distance;
 const uint8_t kEncoderFrequency = 20;
@@ -158,6 +159,8 @@ int main(void)
 	
 //	
 	BSP_Timer8PWM();
+	delay_ms(500);// while(j>0) j--;
+	
 	BSP_TimerInit(kEncoderFrequency);
 	
 //	IWDG_Init(4, 120);	// 192ms
@@ -167,7 +170,6 @@ int main(void)
 	BSP_EncoderRead();
 	BSP_EncoderRead();
 	BSP_EncoderRead();
-	delay_ms(500);
 	printf("all initialized  \n");
 	
 	while (1)
@@ -197,15 +199,15 @@ int main(void)
 				led3 = 0;
 			}
 		}
-//		
-//		// timeout send heartbeat to keep alive
+		
+		// timeout send heartbeat to keep alive
 		if(gHeartbeatCnt > kHeartbeatMax)
 		{
 			gCanMsg.bms_heart = 1;
 			gHeartbeatCnt = 0;
 			BSP_CanSendBmsHeart();
 		}
-//				
+				
 		if (gCanMsg.is_auto && gCanMsg.status )
 		{
 			if((gCanMsg.status & BSP_CAN_UPDATE_COMMAND ) && fabs(gCanMsg.cmd_targetAngle-last_angle_target) > 3)
@@ -246,6 +248,9 @@ void SysTick_Handler()
 		
 		TIM_Cmd(TIM8, ENABLE); //enable the pwm timer for drive a ultrasonic
 		TIM8->CNT = 0;
+		PWMPeriodCnt =0;
+		
+		
 		UltrSendflag = 0x01;
 		transmittime = millis();
 		ReceiveIO = 0x00;
@@ -255,21 +260,23 @@ void SysTick_Handler()
 		if((transmitFlag1 == 0)&&(UltrSendflag == 0x01)){
 			ReceiveIO = 0x01;
 			UltrSendflag = 0x00;
-			receivetime = millis();
+			receivetime = micros();
 			transmitFlag1+=1;
 		}
 		if((transmitFlag2 == 0)&&(UltrSendflag == 0x01)){
 			ReceiveIO = 0x02;
 			UltrSendflag = 0x00;
-			receivetime = millis();
+			receivetime = micros();
 			transmitFlag2+=1;
 		}
 	//		printf("Timestamp : %u  \n", micros());
 	 }
 	if((ReceiveIO == 0x01)||(ReceiveIO == 0x02))
 	{
+		ReceiveIO = 0;
 		distance = receivetime - transmittime ;
-		if(distance <= 0 )  distance = 8;
+		if(distance <= 0 )  
+			distance = 8;
 		else distance = distance*340/1000; //unit meter
 	}
 }
