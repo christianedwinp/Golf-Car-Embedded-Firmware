@@ -15,11 +15,12 @@
 enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
 
 extern uint32_t start1,finish1, delta1, start2,finish2, delta2;
+extern uint32_t transmittime;
 extern volatile u32 Millis;
 extern int rising1,rising2, transmitFlag1, transmitFlag2;
 extern short PWMPeriodCnt;
+extern unsigned char ReceiveIO;
 
-uint32_t transmittime,receivetime,distance;
 const uint8_t kEncoderFrequency = 20;
 float kControllerP = 1.5;
 float kControllerI = 0.3;
@@ -37,7 +38,6 @@ const uint16_t kHeartbeatMax = 9;
 static uint16_t velocity_flag = 0;
 
 unsigned char UltrSendflag = 0x00;
-unsigned char ReceiveIO = 0x00;
 
 
 /*  ONLY FOR DEBUG
@@ -158,7 +158,7 @@ int main(void)
 	BSP_UltrasonicInit();				
 	
 //	
-	BSP_Timer8PWM();
+	BSP_Timer6PWM();
 	delay_ms(500);// while(j>0) j--;
 	
 	BSP_TimerInit(kEncoderFrequency);
@@ -246,39 +246,21 @@ void SysTick_Handler()
 		UltrasonicNum++;
 		UltrasonicNum = UltrasonicNum%4;
 		
-		TIM_Cmd(TIM8, ENABLE); //enable the pwm timer for drive a ultrasonic
-		TIM8->CNT = 0;
+		TIM_Cmd(TIM6, ENABLE); //enable the pwm timer for drive a ultrasonic
+		TIM6->CNT = 0;
 		PWMPeriodCnt =0;
 		
 		
 		UltrSendflag = 0x01;
-		transmittime = millis();
+		transmittime = micros();
 		ReceiveIO = 0x00;
 		
 		printf("ultrasonic sent  \n");
-		
-		if((transmitFlag1 == 0)&&(UltrSendflag == 0x01)){
-			ReceiveIO = 0x01;
-			UltrSendflag = 0x00;
-			receivetime = micros();
-			transmitFlag1+=1;
-		}
-		if((transmitFlag2 == 0)&&(UltrSendflag == 0x01)){
-			ReceiveIO = 0x02;
-			UltrSendflag = 0x00;
-			receivetime = micros();
-			transmitFlag2+=1;
-		}
+
 	//		printf("Timestamp : %u  \n", micros());
 	 }
-	if((ReceiveIO == 0x01)||(ReceiveIO == 0x02))
-	{
-		ReceiveIO = 0;
-		distance = receivetime - transmittime ;
-		if(distance <= 0 )  
-			distance = 8;
-		else distance = distance*340/1000; //unit meter
-	}
+			
+
 }
 
 

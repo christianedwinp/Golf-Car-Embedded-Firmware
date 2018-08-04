@@ -52,10 +52,10 @@ void TIM1_UP_IRQHandler(void)
 }
 
 
-void BSP_Timer8PWM()
+void BSP_Timer6PWM()
 {
 	TIM_TimeBaseInitTypeDef	TIM_TimeBaseStructure;
-	TIM_OCInitTypeDef TIM_OCInitStructure;
+//	TIM_OCInitTypeDef TIM_OCInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure_TimerInterrupt;
 	
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -65,13 +65,13 @@ void BSP_Timer8PWM()
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
-	TIM_TimeBaseStructure.TIM_Prescaler = 1; // clk = 72M/(1 + 1) = 36Mhz
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
+	TIM_TimeBaseStructure.TIM_Prescaler = 72; // clk = 72M/(1 + 1) = 36Mhz
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0; 
-	TIM_TimeBaseStructure.TIM_Period = 375; // freq = 36000 khz / 750 = 48k hz
+	TIM_TimeBaseStructure.TIM_Period = 50000; // freq = 36000 khz / 750 = 48k hz
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
-	TIM_TimeBaseInit(TIM8, &TIM_TimeBaseStructure);
+	TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);
 	
 //	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 //	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
@@ -81,20 +81,20 @@ void BSP_Timer8PWM()
 //  TIM_OC1Init(TIM8, &TIM_OCInitStructure);
 //	TIM_OC1PreloadConfig(TIM8,TIM_OCPreload_Enable);
 	
-	TIM_ITConfig(TIM8,TIM_IT_Update,ENABLE);
-	NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannel = TIM8_UP_IRQn;
+	TIM_ITConfig(TIM6,TIM_IT_Update,ENABLE);
+	NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannel = TIM6_IRQn;
   NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelPreemptionPriority = 3;
   NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelSubPriority = 3;
   NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure_TimerInterrupt);
 	
 //  TIM_CtrlPWMOutputs(TIM8,ENABLE);
-  TIM_Cmd(TIM8, ENABLE);
+  TIM_Cmd(TIM6, ENABLE);
 }
 
-void TIM8_UP_IRQHandler()
+void TIM6_IRQHandler()
 {
-	if(TIM_GetITStatus(TIM8,TIM_IT_Update) == SET ) 
+	if(TIM_GetITStatus(TIM6,TIM_IT_Update) == SET ) 
 	{
 		if((PC6ChangeFlag == 0)&&(PWMPeriodCnt<8))
 		{
@@ -106,9 +106,9 @@ void TIM8_UP_IRQHandler()
 			PC6ChangeFlag = 0;
 			GPIOC->BRR = GPIO_Pin_6;
 			PWMPeriodCnt++;
-		} else   TIM_Cmd(TIM8, DISABLE);
-		TIM_ClearITPendingBit(TIM8,TIM_IT_Update); 
-		TIM_ClearFlag(TIM8,TIM_FLAG_Update);
+		} else   TIM_Cmd(TIM6, DISABLE);
+		TIM_ClearITPendingBit(TIM6,TIM_IT_Update); 
+		TIM_ClearFlag(TIM6,TIM_FLAG_Update);
 	}//-11.2us
 
 }

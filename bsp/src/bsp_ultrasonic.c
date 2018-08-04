@@ -4,8 +4,11 @@
 #include <stdio.h>
 
 uint32_t start1,finish1, delta1, start2,finish2, delta2;
+uint32_t transmittime,receivetime,distance;
 int rising1 = 1,rising2 = 1, transmitFlag1 = 0, transmitFlag2 = 0;
+unsigned char ReceiveIO = 0x00;
 
+extern unsigned char UltrSendflag ;
 void BSP_UltrasonicInit(){
 	initMux();
 	switchOnMux(3);
@@ -143,21 +146,39 @@ void initEcho1(){
 }
 
 void EXTI1_IRQHandler(){
-	if (EXTI_GetITStatus(EXTI_Line1) != RESET && transmitFlag1 != 0) {
+	if (EXTI_GetITStatus(EXTI_Line1) != RESET) {
 		if(rising1){
 			//RISING
 			start1 = micros();
 			rising1-=1;
-			transmitFlag1+=1;
+			if(transmitFlag1 ==  1) transmitFlag1 = 2;
 		}else{
 			//FALLING
 			delta1 = micros()-start1;
 			printf("DT1:%u \n", delta1);
 			rising1+=1;
+		
+		  transmitFlag1 = 1;
 		}
-		transmitFlag1--;
-		EXTI_ClearITPendingBit(EXTI_Line1); 
-	}	
+
+		if((transmitFlag1 == 2)&&(UltrSendflag == 0x01)){
+			ReceiveIO = 0x01;
+			UltrSendflag = 0x00;
+			receivetime = micros();
+			transmitFlag1 = 0;
+		}
+
+		if((ReceiveIO == 0x01)||(ReceiveIO == 0x02))
+		{
+			ReceiveIO = 0;
+			distance = receivetime - transmittime ;
+			if(distance <= 0 )  
+				distance = 8;
+			else distance = distance*340/1000; //unit meter
+		}
+	}
+	EXTI_ClearITPendingBit(EXTI_Line1); 	
+
 }
 
 
@@ -191,19 +212,32 @@ void initEcho2(){
 }
 
 void EXTI2_IRQHandler(){
-	if (EXTI_GetITStatus(EXTI_Line2) != RESET && transmitFlag2 != 0) {
+	if (EXTI_GetITStatus(EXTI_Line2) != RESET) {
 		if(rising2){
 			//RISING
 			start2 = micros();
 			rising2-=1;
-			transmitFlag2+=1;
+			if(transmitFlag2 == 1) transmitFlag2 = 2;
 		}else{
 			//FALLING
 			delta2 = micros()-start2;
 			printf("DT2:%u \n", delta2);
+			transmitFlag2 = 1;
 			rising2+=1;
 		}
-		transmitFlag2--;
+		if((transmitFlag2 == 2)&&(UltrSendflag == 0x01)){
+			ReceiveIO = 0x02;
+			UltrSendflag = 0x00;
+			receivetime = micros();
+		}
+		if((ReceiveIO == 0x01)||(ReceiveIO == 0x02))
+		{
+			ReceiveIO = 0;
+			distance = receivetime - transmittime ;
+			if(distance <= 0 )  
+				distance = 8;
+			else distance = distance*340/1000; //unit meter
+		}
 	}	
 	EXTI_ClearITPendingBit(EXTI_Line2); 
 }
