@@ -17,7 +17,7 @@ uint32_t gLast[4] = {gReload, gReload, gReload, gReload};
 
 TIM_TypeDef* TIMs[4] = {BACK_LEFT_TIMER,BACK_RIGHT_TIMER, FRONT_LEFT_TIMER, FRONT_RIGHT_TIMER}; //TIM2,3,4,5
 
-int16_t gEncoder[4] = {0, 0, 0, 0};
+int16_t gEncoder[4] = {1, 2, 3, 4};
 
 
 void BSP_EncoderInit(void)
@@ -25,14 +25,17 @@ void BSP_EncoderInit(void)
 	GPIO_InitTypeDef         GPIO_InitStructure;
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 	TIM_ICInitTypeDef        TIM_ICInitStructure;
-	uint8_t i = 0;
+
 	
 	//GPIO INITIALIZATION
 	RCC_APB1PeriphClockCmd(BACK_LEFT_TIMER_CLK | BACK_RIGHT_TIMER_CLK | FRONT_LEFT_TIMER_CLK | FRONT_RIGHT_TIMER_CLK, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | BACK_LEFT_CH1_CLK | BACK_LEFT_CH2_CLK | BACK_RIGHT_CLK | FRONT_LEFT_CLK | FRONT_RIGHT_CLK, ENABLE);
 	
+	
+	GPIO_PinRemapConfig(GPIO_PartialRemap1_TIM2, ENABLE);//部分重映射
 	//GPIO_PinRemapConfig(GPIO_PartialRemap_TIM3, ENABLE);
 	//GPIO_PinRemapConfig(GPIO_Remap_TIM4, ENABLE);
+
 	
 	GPIO_InitStructure.GPIO_Pin = BACK_LEFT_CH1;
 	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
@@ -40,7 +43,7 @@ void BSP_EncoderInit(void)
 	GPIO_Init(BACK_LEFT_CH1_PORT, &GPIO_InitStructure);
 	
 	GPIO_InitStructure.GPIO_Pin = BACK_LEFT_CH2;
-	GPIO_Init(BACK_LEFT_CH1_PORT, &GPIO_InitStructure);
+	GPIO_Init(BACK_LEFT_CH2_PORT, &GPIO_InitStructure);
 	
 	GPIO_InitStructure.GPIO_Pin = BACK_RIGHT_CH1 | BACK_RIGHT_CH2;
 	GPIO_Init(BACK_RIGHT_PORT, &GPIO_InitStructure);

@@ -101,7 +101,8 @@ void BSP_CanInit(uint32_t baud)
 	CAN_InitStructure.CAN_AWUM=DISABLE;		//没有使能自动唤醒模式
 	CAN_InitStructure.CAN_NART=DISABLE;		//没有使能非自动重传模式
 	CAN_InitStructure.CAN_RFLM=DISABLE;		//没有使能接收FIFO锁定模式
-	CAN_InitStructure.CAN_TXFP=DISABLE;		//没有使能发送FIFO优先级
+	CAN_InitStructure.CAN_TXFP=ENABLE;		//没有使能发送FIFO优先级
+//	CAN_InitStructure.CAN_Mode=	CAN_Mode_LoopBack;
 	CAN_InitStructure.CAN_Mode=CAN_Mode_Normal;//CAN设置为正常模式
 	CAN_InitStructure.CAN_SJW=CAN_SJW_1tq; 	//重新同步跳跃宽度1个时间单位
 	CAN_InitStructure.CAN_BS1=CAN_BS1_9tq; 	//时间段1为3个时间单位
@@ -111,7 +112,7 @@ void BSP_CanInit(uint32_t baud)
 									 
 
 	/* CAN filter init */
-	CAN_FilterInitStructure.CAN_FilterNumber=1;						//指定过滤器为1
+	CAN_FilterInitStructure.CAN_FilterNumber=0;						//指定过滤器为1
 	CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdMask;	//指定过滤器为标识符屏蔽位模式
 	CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_32bit;	//过滤器位宽为32位
 	CAN_FilterInitStructure.CAN_FilterIdHigh=0x0000;				//过滤器标识符的高16位值
@@ -124,13 +125,20 @@ void BSP_CanInit(uint32_t baud)
 
 	/* CAN FIFO0 message pending interrupt enable */ 
 	CAN_ITConfig(CAN1,CAN_IT_FMP0, ENABLE); //使能FIFO0消息挂号中断.
-
+	CAN_ITConfig(CAN1,CAN_IT_TME,ENABLE);
+	
 	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;     // 主优先级为0
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;            // 次优先级为0
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;     // 主优先级为0
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;            // 次优先级为0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
+	
+	NVIC_InitStructure.NVIC_IRQChannel = USB_HP_CAN1_TX_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;     // 主优先级为0
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;            // 次优先级为0
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+	
 	gCanMsg.status = 0;
 	gCanMsg.bms_heart = 1;
 	gCanMsg.is_auto = 0;
@@ -195,10 +203,10 @@ void BSP_CanParse(CanRxMsg* msg)
 	}
 }
 
-
+	CanRxMsg msg;
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
-	CanRxMsg msg;
+
 	if (CAN_GetITStatus(CAN1, CAN_IT_FMP0) == SET)
 	{
 		CAN_Receive(CAN1, CAN_FIFO0, &msg);
@@ -206,7 +214,14 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
 	}
 }
 
-
+void USB_HP_CAN1_TX_IRQHandler(void)
+{
+    if (CAN_GetITStatus(CAN1,CAN_IT_TME)!= RESET) 
+		{
+				CAN_ClearITPendingBit(CAN1,CAN_IT_TME);
+    }
+}
+	CanTxMsg TxMessage;
 uint8_t BSP_CanSend(uint32_t id, uint8_t* msg, uint8_t len)
 {
 	uint8_t mbox = CAN_TxStatus_NoMailBox;
@@ -216,7 +231,7 @@ uint8_t BSP_CanSend(uint32_t id, uint8_t* msg, uint8_t len)
 	{
 		len = 8;
 	}
-	CanTxMsg TxMessage;
+
 	TxMessage.StdId = id;       // 标准标识符为0
 	TxMessage.ExtId = id;       // 设置扩展标示符（29位）
 	if (id > 0x7FF)             // 使用扩展标识符

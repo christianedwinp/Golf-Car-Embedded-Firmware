@@ -1,6 +1,8 @@
 #include "bsp_timer.h"
 #include "bsp_io.h"
+#include "bsp_encoder.h"
 #include "pin_configuration.h"
+#include "bsp_can.h"
 
 volatile uint8_t gTimerFlag = 0;
 short PWMPeriodCnt;
@@ -45,6 +47,8 @@ void TIM1_UP_IRQHandler(void)
 	
 	if(TIM_GetITStatus(ENC_TIMER,TIM_IT_Update) == SET ) 
 	{
+		BSP_EncoderRead();
+		BSP_CanSendEncoder(gEncoder);
 		gTimerFlag = 1;
 	}
 	
@@ -66,9 +70,9 @@ void BSP_Timer6PWM()
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-	TIM_TimeBaseStructure.TIM_Prescaler = 72; // clk = 72M/(1 + 1) = 36Mhz
+	TIM_TimeBaseStructure.TIM_Prescaler = 1; // clk = 72M/(1 + 1) = 36Mhz
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0; 
-	TIM_TimeBaseStructure.TIM_Period = 50000; // freq = 36000 khz / 750 = 48k hz
+	TIM_TimeBaseStructure.TIM_Period = 375; // freq = 36000 khz / 750 = 48k hz
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);

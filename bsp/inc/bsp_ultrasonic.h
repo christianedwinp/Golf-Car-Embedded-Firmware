@@ -8,6 +8,7 @@
 #define voltageCompare1_Threshold	620		
 #define voltageCompare2_Threshold	620		
 
+void InitPGA460(void);
 void BSP_UltrasonicInit(void);
 void initTrig(void);
 void initEcho1(void);

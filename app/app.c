@@ -9,7 +9,7 @@
 #include "bsp_ultrasonic.h"
 #include "bsp_time.h"
 #include "pin_configuration.h"
-
+#include "PGA460_USSC.h"
 #include <math.h>
 
 enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
@@ -20,25 +20,21 @@ extern volatile u32 Millis;
 extern int rising1,rising2, transmitFlag1, transmitFlag2;
 extern short PWMPeriodCnt;
 extern unsigned char ReceiveIO;
-
+extern uint16_t kControllerDeadzoneLow;
+extern uint16_t kControllerDeadzoneLowLow;
+extern uint16_t kControllerDeadzone;
+extern 	byte ultraMeasResult[34+3]; 
 const uint8_t kEncoderFrequency = 20;
-float kControllerP = 1.5;
-float kControllerI = 0.3;
-float kControllerD = 0;
-float kControllerDeadzoneHighRatioR = 0.07;
-float kControllerDeadzoneHighRatioL = 0.04;
-
-uint16_t kControlSpeedMax = 1500;
-uint16_t kControllerDeadzoneHigh = 20;
-uint16_t kControllerDeadzoneLow = 15;
-uint16_t kControllerDeadzoneLowLow = 5;
-uint16_t kControllerDeadzone = 10;
 uint16_t gHeartbeatCnt = 0;
+//uint16_t IOITDelayCnt = 0;
 const uint16_t kHeartbeatMax = 9;
-static uint16_t velocity_flag = 0;
+
+double objDist = 0,objWidth = 0;
+uint16_t TempDis=0,TempWidth=0;
+byte objectDetected = false;
 
 unsigned char UltrSendflag = 0x00;
-
+unsigned short BumperIO;
 
 /*  ONLY FOR DEBUG
 *   This func is used to configure MCO which can help debug clock
@@ -99,68 +95,26 @@ void IWDG_Init(u8 prer,u16 rlr)
 	IWDG_Enable();  //Ê¹ÄÜIWDG	
 }
 
-/** @brief steering Controller
- *
- * @param target
- * @param current
- * @param velocity
- */
-void steeringController(int16_t target, int16_t current, int16_t velocity)
-{
-	float error = target - current;
-	int16_t speed = 0;
-	
-	if( error > kControllerDeadzone || error < -kControllerDeadzone )
-	{
-		speed = error*kControllerP;
-		velocity_flag++;
-	}
-	else
-	{
-		kControllerDeadzone = kControllerDeadzoneHigh;
-		if(target < -100)
-		{
-			kControllerDeadzone += fabs(target*kControllerDeadzoneHighRatioR);
-		}
-		else if(target > 100)
-		{
-			kControllerDeadzone += fabs(target*kControllerDeadzoneHighRatioL);
-		}
-	}
-	
-	if(speed > kControlSpeedMax)
-	{
-		speed = kControlSpeedMax;
-	}
-	else if(speed < -kControlSpeedMax)
-	{
-		speed = -kControlSpeedMax;
-	}
-	
-	
-	BSP_EpsSet(speed);
-}
 RCC_ClocksTypeDef rcc;
 int main(void)
 {
-	uint8_t led3 = 0;
-	int16_t last_angle_target = 0;
+//	int16_t last_angle_target = 0;
+	int Cnt;
 	RCC_GetClocksFreq(&rcc);
 	Systick_Init();
 	BSP_Init();
 	BSP_DelayInit();	         		// Init delpy parameters
 	BSP_LEDTestInit();       	    // Init LED on board to control rely	
+	BSP_BumperIO();
 	//MCO(NONE);                  // Debug system clock, use it only when you want to check clock
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
-	BSP_EncoderInit();						
+//	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
+	InitPGA460();
 	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
-	BSP_UltrasonicInit();				
-	
+			
+	delay_ms(500);
 //	
-	BSP_Timer6PWM();
-	delay_ms(500);// while(j>0) j--;
-	
 	BSP_TimerInit(kEncoderFrequency);
 	
 //	IWDG_Init(4, 120);	// 192ms
@@ -175,92 +129,68 @@ int main(void)
 	while (1)
 	{
 		//update by timer
-		if (gTimerFlag)
+		if(gTimerFlag == 1)
 		{
-			gTimerFlag = 0;
-			BSP_EncoderRead();
-			BSP_CanSendEncoder(gEncoder);
+			gTimerFlag = 0 ;
+			Cnt++;
+			Cnt = Cnt%20;
+			if((Cnt>10)&&(Cnt<20))
+			{
+//				GPIO_SetBits(GPIOB,GPIO_Pin_13);
 			
-			if(gCanMsg.bms_heart)
-			{
-				BSP_CanSendBmsHeart();
-			}
-			else
-			{
-				gHeartbeatCnt++;
-			}
-			IWDG_ReloadCounter();
+			}else if(Cnt<10){
+//				GPIO_ResetBits(GPIOB,GPIO_Pin_13);
+			GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 | TEST_LED_2);	 
 			
-			// indicate status
-			led3++;
-			if(led3 >= 10)
-			{
-				LED3_Toggle
-				led3 = 0;
 			}
-		}
+			
+			
 		
-		// timeout send heartbeat to keep alive
-		if(gHeartbeatCnt > kHeartbeatMax)
-		{
-			gCanMsg.bms_heart = 1;
-			gHeartbeatCnt = 0;
-			BSP_CanSendBmsHeart();
-		}
-				
-		if (gCanMsg.is_auto && gCanMsg.status )
-		{
-			if((gCanMsg.status & BSP_CAN_UPDATE_COMMAND ) && fabs(gCanMsg.cmd_targetAngle-last_angle_target) > 3)
-			{
-				// small angle -> small deadzone
-				if(fabs(gCanMsg.cmd_targetAngle) < 50)
-				{
-					kControllerDeadzone = kControllerDeadzoneLowLow;
-				}
-				else
-				{
-					kControllerDeadzone = kControllerDeadzoneLow;
-				}
-			}
-			last_angle_target = gCanMsg.cmd_targetAngle;
-			steeringController(gCanMsg.cmd_targetAngle, gCanMsg.sas_angle,
-			                   gCanMsg.sas_angleVelocity);
-			gCanMsg.status = 0;
 		}
 		
 	}
-	return 0;
 }
+
 
 void SysTick_Handler()
 {
+	int speedSound = 343; // 343 degC at room temperature
+	double digitalDelay = 0.00005*343;
 	// time counter
 	Millis++;
+	BumperIO = GPIO_ReadInputData(GPIOC)&0x0008;
 	
-			//Ultrasonic Routine
-	if((Millis%35)==0) //launch a ultrasonic in every 35ms
+	
+	//Ultrasonic Routine
+	ultrasonicCmd(0,1);// run preset 1 (short distance) burst+listen for 1 object
+	pullUltrasonicMeasResult(false);      // Pull Ultrasonic Measurement Result
+	TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+	TempWidth = ultraMeasResult[3];
+	if((objDist>0.15)&(objDist<11.2))
 	{
-		static short UltrasonicNum = 0;
-		selectChannel_Mux1(UltrasonicNum); //select the specific ultrasonic
-		selectChannel_Mux2(UltrasonicNum); 
-		UltrasonicNum++;
-		UltrasonicNum = UltrasonicNum%4;
-		
-		TIM_Cmd(TIM6, ENABLE); //enable the pwm timer for drive a ultrasonic
-		TIM6->CNT = 0;
-		PWMPeriodCnt =0;
-		
-		
-		UltrSendflag = 0x01;
-		transmittime = micros();
-		ReceiveIO = 0x00;
-		
-		printf("ultrasonic sent  \n");
-
-	//		printf("Timestamp : %u  \n", micros());
-	 }
+		objectDetected = true;
+	
+	}
+	
+	if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
+	{
+		ultrasonicCmd(1,1);
+		pullUltrasonicMeasResult(false);
+		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+	  TempWidth = ultraMeasResult[3];
+		if((objDist<11.2)&&(objDist>0))
+		{
+			objectDetected = true;
 			
-
+		}else if(objDist == 0)
+		{
+		}else{
+			printf("No object!!!");
+		}
+	}
+	
+	objDist = (objDist/2*0.000001*speedSound) - digitalDelay;
+	objWidth= TempWidth * 16;
 }
 
 
