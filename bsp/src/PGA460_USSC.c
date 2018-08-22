@@ -1024,7 +1024,7 @@ void ultrasonicCmd(byte cmd, byte numObjUpdate)
 		//do nothing
 	}
 	
-	delay_ms(70); // maximum record length is 65ms, so delay with margin
+	delay_us(70); // maximum record length is 65ms, so delay with margin
 	return;
 }
 
@@ -1314,7 +1314,7 @@ void runEchoDataDump(byte preset)
 			Usart2Send(buf10, sizeof(buf10));
 		}
 
-		delay_ms(5);
+		delay_ms(2);
 		
 		// run preset 1 or 2 burst and or listen command
 		ultrasonicCmd(preset, 1);	
@@ -1439,7 +1439,7 @@ double runDiagnostics(byte run, byte diag)
 			ultrasonicCmd(0, 1);	// always run preset 1 (short distance) burst+listen for 1 object for system diagnostic
 			
 			
-			delay_ms(100); // record time length maximum of 65ms, so add margin
+			delay_us(100); // record time length maximum of 65ms, so add margin
 			Usart_Flush();
 			
 			byte buf8[3] = {syncByte, SD, calcChecksum(SD)};
@@ -1614,7 +1614,7 @@ bool burnEEPROM()
 		}
 
 		
-		delay_ms(1);
+		delay_ms(10);
 		
 		// Write "0xD" to EE_UNLCK to unlock EEPROM, and '1' to EEPRGM bit at EE_CNTRL register
 		regAddr = 0x40; //EE_CNTRL
@@ -2411,6 +2411,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
  *-------------------------------------------------------------------*/
 void thresholdBulkRead(byte preset)
 {
+
 //	byte n = 0;
 //	byte buf15[2] = {syncByte, THRBR};
 	byte presetOffset = 0;
@@ -2493,7 +2494,7 @@ void thresholdBulkWrite(byte *p1ThrMap, byte *p2ThrMap)
 		//do nothing
 	}
 	
-	delay_ms(100);
+	delay_ms(10);
 	return;
 }
 

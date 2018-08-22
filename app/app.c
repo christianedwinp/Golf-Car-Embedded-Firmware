@@ -98,8 +98,9 @@ void IWDG_Init(u8 prer,u16 rlr)
 RCC_ClocksTypeDef rcc;
 int main(void)
 {
-//	int16_t last_angle_target = 0;
 	int Cnt;
+	int speedSound = 343; // 343 degC at room temperature
+	double digitalDelay = 0.00005*343;
 	RCC_GetClocksFreq(&rcc);
 	Systick_Init();
 	BSP_Init();
@@ -116,7 +117,7 @@ int main(void)
 	delay_ms(500);
 //	
 	BSP_TimerInit(kEncoderFrequency);
-	
+//	BSP_Timer6PWM();
 //	IWDG_Init(4, 120);	// 192ms
 //	IWDG_ReloadCounter();
 	
@@ -133,20 +134,47 @@ int main(void)
 		{
 			gTimerFlag = 0 ;
 			Cnt++;
-			Cnt = Cnt%20;
-			if((Cnt>10)&&(Cnt<20))
+			Cnt = Cnt%10;
+			if((Cnt>5)&&(Cnt<10))
 			{
-//				GPIO_SetBits(GPIOB,GPIO_Pin_13);
+				GPIO_SetBits(GPIOB,GPIO_Pin_13);
 			
-			}else if(Cnt<10){
+			}else if(Cnt<5){
 //				GPIO_ResetBits(GPIOB,GPIO_Pin_13);
-			GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 | TEST_LED_2);	 
+			GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 );	 
 			
-			}
-			
-			
+		  }
+		}
+					//Ultrasonic Routine
+		ultrasonicCmd(0,1);// run preset 1 (short distance) burst+listen for 1 object
+		pullUltrasonicMeasResult(false);      // Pull Ultrasonic Measurement Result
+		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+		TempWidth = ultraMeasResult[3];
+		if((objDist>0.15)&(objDist<11.2))
+		{
+			objectDetected = true;
 		
 		}
+		
+		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
+		{
+			ultrasonicCmd(1,1);
+			pullUltrasonicMeasResult(false);
+			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+			TempWidth = ultraMeasResult[3];
+			if((objDist<11.2)&&(objDist>0))
+			{
+				objectDetected = true;
+				
+			}else if(objDist == 0)
+			{
+			}else{
+				printf("No object!!!");
+			}
+		}
+		
+		objDist = (objDist/2*0.000001*speedSound) - digitalDelay;
+		objWidth= TempWidth * 16;
 		
 	}
 }
@@ -154,43 +182,22 @@ int main(void)
 
 void SysTick_Handler()
 {
-	int speedSound = 343; // 343 degC at room temperature
-	double digitalDelay = 0.00005*343;
+
 	// time counter
 	Millis++;
 	BumperIO = GPIO_ReadInputData(GPIOC)&0x0008;
-	
-	
-	//Ultrasonic Routine
-	ultrasonicCmd(0,1);// run preset 1 (short distance) burst+listen for 1 object
-	pullUltrasonicMeasResult(false);      // Pull Ultrasonic Measurement Result
-	TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-	TempWidth = ultraMeasResult[3];
-	if((objDist>0.15)&(objDist<11.2))
-	{
-		objectDetected = true;
-	
-	}
-	
-	if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
-	{
-		ultrasonicCmd(1,1);
-		pullUltrasonicMeasResult(false);
-		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-	  TempWidth = ultraMeasResult[3];
-		if((objDist<11.2)&&(objDist>0))
-		{
-			objectDetected = true;
-			
-		}else if(objDist == 0)
-		{
-		}else{
-			printf("No object!!!");
-		}
-	}
-	
-	objDist = (objDist/2*0.000001*speedSound) - digitalDelay;
-	objWidth= TempWidth * 16;
+
 }
 
+void TIM6_IRQHandler()
+{
+
+	if(TIM_GetITStatus(TIM6,TIM_IT_Update) == SET ) 
+	{
+	
+
+	  }//-11.2us
+		TIM_ClearITPendingBit(TIM6,TIM_IT_Update); 
+		TIM_ClearFlag(TIM6,TIM_FLAG_Update);
+}
 

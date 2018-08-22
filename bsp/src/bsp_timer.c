@@ -70,9 +70,9 @@ void BSP_Timer6PWM()
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-	TIM_TimeBaseStructure.TIM_Prescaler = 1; // clk = 72M/(1 + 1) = 36Mhz
+	TIM_TimeBaseStructure.TIM_Prescaler = 71; // clk = 72M/(1 + 71) = 1Mhz
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0; 
-	TIM_TimeBaseStructure.TIM_Period = 375; // freq = 36000 khz / 750 = 48k hz
+	TIM_TimeBaseStructure.TIM_Period = 1000; // freq = 1000 khz / 1000 = 1k hz
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);
@@ -87,8 +87,8 @@ void BSP_Timer6PWM()
 	
 	TIM_ITConfig(TIM6,TIM_IT_Update,ENABLE);
 	NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannel = TIM6_IRQn;
-  NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelPreemptionPriority = 3;
-  NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelSubPriority = 3;
+  NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelSubPriority = 2;
   NVIC_InitStructure_TimerInterrupt.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure_TimerInterrupt);
 	
@@ -96,24 +96,5 @@ void BSP_Timer6PWM()
   TIM_Cmd(TIM6, ENABLE);
 }
 
-void TIM6_IRQHandler()
-{
-	if(TIM_GetITStatus(TIM6,TIM_IT_Update) == SET ) 
-	{
-		if((PC6ChangeFlag == 0)&&(PWMPeriodCnt<8))
-		{
-			PC6ChangeFlag = 1;
-			GPIOC->BSRR = GPIO_Pin_6;
-		}
-		else if((PC6ChangeFlag == 1)&&(PWMPeriodCnt<8))
-		{
-			PC6ChangeFlag = 0;
-			GPIOC->BRR = GPIO_Pin_6;
-			PWMPeriodCnt++;
-		} else   TIM_Cmd(TIM6, DISABLE);
-		TIM_ClearITPendingBit(TIM6,TIM_IT_Update); 
-		TIM_ClearFlag(TIM6,TIM_FLAG_Update);
-	}//-11.2us
 
-}
 
