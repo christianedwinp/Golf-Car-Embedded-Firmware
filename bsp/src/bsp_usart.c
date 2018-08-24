@@ -2,7 +2,7 @@
 #include "bsp_eps.h"
 #include "pin_configuration.h"
 #include "string.h"
-
+#include "bsp_time.h"
 //////////////////////////////////////////////////////////////////
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
 #if 1
@@ -21,9 +21,9 @@ void _sys_exit(int x)
 } 
 
 #endif
-
+uint16_t UsartRxBuffSize = 50;
 unsigned short Rx_Head = 0 ,Rx_Tail = 0;
-uint8_t Rx[UsartRxBuffSize];
+char Rx[50];
 static const uint8_t kUsartReceiveBufferSize = 64;
 static uint8_t gUsartReceiveBuffer[kUsartReceiveBufferSize];
 
@@ -58,14 +58,12 @@ void BSP_UsartInit(uint32_t bound){
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
-	BSP_UsartDmaInit();
+//	BSP_UsartDmaInit();
 	RCC_APB2PeriphClockCmd(USART_CLK | USART_IO_CLK, ENABLE); 
 	
   	
 	RCC_APB2PeriphClockCmd( TEST_LED_CLK, ENABLE); 
 	
-
-
 	
 	GPIO_InitStructure.GPIO_Pin = USART_TX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //复用推挽输出
@@ -86,8 +84,8 @@ void BSP_UsartInit(uint32_t bound){
 	USART_Init(USART_CHANNEL, &USART_InitStructure);  					//初始化USART1
 	
 	USART_ClearFlag(USART_CHANNEL, USART_FLAG_TC);
-	USART_ITConfig(USART_CHANNEL, USART_IT_IDLE, ENABLE);				//开启相关中断
-	USART_DMACmd(USART_CHANNEL,USART_DMAReq_Rx,ENABLE); 	
+	//USART_ITConfig(USART_CHANNEL, USART_IT_IDLE, ENABLE);				//开启相关中断
+//	USART_DMACmd(USART_CHANNEL,USART_DMAReq_Rx,ENABLE); 	
 	USART_Cmd(USART_CHANNEL, ENABLE);
 
 	//Usart1 NVIC 配置
@@ -133,8 +131,8 @@ void BSP_Usart2Init(int baud){//PA2 PA3
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
 	GPIO_Init(GPIOA, &GPIO_InitStructure);   //初始化GPIOA
 
-	USART_InitStructure.USART_BaudRate = 115200;				//波特率设置：115200
-	USART_InitStructure.USART_WordLength = USART_WordLength_9b;	//数据位数设置：8位
+	USART_InitStructure.USART_BaudRate = 19200;				//波特率设置：19200
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;	//数据位数设置：8位
 	USART_InitStructure.USART_StopBits = USART_StopBits_2; 		//停止位设置：2位
 	USART_InitStructure.USART_Parity = USART_Parity_No ;  		//是否奇偶校验：无
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//硬件流控制模式设置：没有使能
@@ -143,8 +141,7 @@ void BSP_Usart2Init(int baud){//PA2 PA3
 	USART_Init(USART2, &USART_InitStructure);  					//初始化USART1
 	
 //	USART_ClearFlag(USART2, USART_FLAG_TC);
-	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);				//开启接受中断
-//	USART_DMACmd(USART2,USART_DMAReq_Rx,ENABLE); 	
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);				//开启接受中断	
 	USART_Cmd(USART2, ENABLE);
 
 	//Usart1 NVIC 配置
@@ -158,7 +155,7 @@ void USART2_IRQHandler(void)
 {	
 	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)  
   {
-	  unsigned short tempRx_Head = (Rx_Head+1)&(UsartRxBuffSize - 1);
+	  unsigned short tempRx_Head = (Rx_Head+1)%UsartRxBuffSize;
 		unsigned short tempRx_Tail = Rx_Tail;
 		uint8_t data = USART_ReceiveData(USART2);			//读取数据 注意：这句必须要，否则不能够清除中断标志位
 		if(tempRx_Head == tempRx_Tail)		
@@ -186,9 +183,9 @@ uint8_t Usart2_Getch()
 {
 	uint8_t ans;
 	USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+//	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 	ans = Rx[Rx_Tail];
-	Rx_Tail = (Rx_Tail+1)&(UsartRxBuffSize - 1);
+	Rx_Tail = (Rx_Tail+1)%UsartRxBuffSize;
 
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 //	USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
@@ -209,6 +206,8 @@ void Usart2Send(unsigned char *Str, int len)
 	{ 
 		USART_SendData(USART2,Str[i]);
 		while(USART_GetFlagStatus(USART2,USART_FLAG_TC)!=SET);
+		delay_us(100);
+	
 	}
 }
 int read(void){

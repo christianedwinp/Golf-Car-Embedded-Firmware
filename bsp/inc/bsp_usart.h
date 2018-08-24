@@ -3,7 +3,7 @@
 
 #include "stdio.h"	
 #include "bsp.h" 
-#define UsartRxBuffSize 50
+
 void BSP_UsartInit(u32 bound);
 void BSP_Usart2Init(int baud);
 short Usart2_DataAvailable(void);

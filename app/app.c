@@ -96,6 +96,7 @@ void IWDG_Init(u8 prer,u16 rlr)
 }
 
 RCC_ClocksTypeDef rcc;
+uint8_t regaddrread = 0x02,regaddrwr = 0x02;
 int main(void)
 {
 	int Cnt;
@@ -107,12 +108,13 @@ int main(void)
 	BSP_DelayInit();	         		// Init delpy parameters
 	BSP_LEDTestInit();       	    // Init LED on board to control rely	
 	BSP_BumperIO();
+	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
 	//MCO(NONE);                  // Debug system clock, use it only when you want to check clock
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
 //	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
 	InitPGA460();
-	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
+	
 			
 	delay_ms(500);
 //	
@@ -147,6 +149,7 @@ int main(void)
 		}
 					//Ultrasonic Routine
 		ultrasonicCmd(0,1);// run preset 1 (short distance) burst+listen for 1 object
+		
 		pullUltrasonicMeasResult(false);      // Pull Ultrasonic Measurement Result
 		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 		TempWidth = ultraMeasResult[3];
@@ -156,26 +159,27 @@ int main(void)
 		
 		}
 		
-		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
-		{
-			ultrasonicCmd(1,1);
-			pullUltrasonicMeasResult(false);
-			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-			TempWidth = ultraMeasResult[3];
-			if((objDist<11.2)&&(objDist>0))
-			{
-				objectDetected = true;
-				
-			}else if(objDist == 0)
-			{
-			}else{
-				printf("No object!!!");
-			}
-		}
+//		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
+//		{
+//			ultrasonicCmd(1,1);
+//			pullUltrasonicMeasResult(false);
+//			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+//			TempWidth = ultraMeasResult[3];
+//			if((objDist<11.2)&&(objDist>0))
+//			{
+//				objectDetected = true;
+//				
+//			}else if(objDist == 0)
+//			{
+//			}else{
+//				printf("No object!!!\n");
+//			}
+//		}
 		
-		objDist = (objDist/2*0.000001*speedSound) - digitalDelay;
+		objDist = (TempDis/2*0.000001*speedSound) - digitalDelay;
 		objWidth= TempWidth * 16;
-		
+		registerWrite(regaddrwr,0x04);
+		registerRead(regaddrread);
 	}
 }
 

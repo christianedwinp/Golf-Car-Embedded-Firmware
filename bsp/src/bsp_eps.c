@@ -113,8 +113,8 @@ float kControllerDeadzoneHighRatioL = 0.04;
   //???fputc?? 
 int fputc(int ch, FILE *f)
 { 	
-	while((USART3->SR&0X40)==0);//????,??????   
-	USART3->DR = (uint8_t) ch;      
+	while((USART1->SR&0X40)==0);//????,??????   
+	USART1->DR = (uint8_t) ch;      
 	return ch;
 }
   

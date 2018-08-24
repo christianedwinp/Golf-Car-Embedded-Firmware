@@ -230,14 +230,16 @@
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
+ uint8_t PGAUartAddr = 0;
 void initSTM32F1PGA460(byte mode, uint32_t baud, byte uartAddrUpdate)
 {
 	BSP_Usart2Init(baud);	// initialize PGA460 UART serial channel
 	delay_ms(50);
-	byte rd = registerRead(0x1f);
-	uint8_t PGAUartAddr = 0xe0&rd;
+	byte rd = 0x11;
+	rd = registerRead(0x1f);
+//	PGAUartAddr = 0xe0&rd;
 	regAddr = 0x1f;
-	SRW = 0xA0 + PGAUartAddr;
+	SRW = 0x0A + PGAUartAddr;
 	regData = uartAddrUpdate + 0x1f&rd;
 	byte buf[5] = {syncByte,SRW,regAddr,regData,calcChecksum(SRW) };	
 
@@ -456,7 +458,7 @@ void defaultPGA460(byte xdcr)
 		   TVGAIN5 = 0x14;//分段增益的第 5段的数值，第0段是固定数值
 		   TVGAIN6 = 0x50; // FREQ_SHIFT设置为0 ，BPF_A2_xSB, BPF_A3_xSB, and BPF_B1_xSB的数值由PGA自己计算并overwrite
 		   INIT_GAIN = 0x54; //这个参数是将模拟前端增益设置成固定时变增益的增益值
-		   FREQUENCY  = 0x32; //transducer的驱动频率
+		   FREQUENCY  = 0x32; //transducer的驱动频率0x32=40k,0x6e=52k,,Frequency = 0.2 * FREQ + 30 [kHz]=52k
 		   DEADTIME = 0xA0;   //死区时间，FETA与FETB的死区时间，用来在FET 的RDSON模式下的电流击穿
 													//在这里将死区时间设置为了0，这里还设置了比较器的抗尖峰脉冲的的周期数
 		   if (comm == 2)
@@ -473,8 +475,8 @@ void defaultPGA460(byte xdcr)
 												 //这里把PGA的串口地址设为0，我们在这里将其更改为
 												 //其他的串口地址
 		   CURR_LIM_P1 = 0x40; //使能preset1和preset2的电流限制，preset1的电流限制为7 * CURR_LIM1 + 50 [mA] = 498mA
-		   CURR_LIM_P2 = 0x40; //设置低通滤波器的截止频率为LPF_CO + 1 [kHz] = 2KHz,
-														//并设置preset2的电流限制为 50mA，仿真中讲电流限制设置为300mA
+		   CURR_LIM_P2 = 0x7f; //设置低通滤波器的截止频率为LPF_CO + 1 [kHz] = 2KHz,
+														//并设置preset2的电流限制为 500mA，仿真中讲电流限制设置为300mA
 														//的echo就可以有很高的电压了
 		   REC_LENGTH = 0x19;  //prset1的echo的记录时间为4.096 * (P1_REC + 1) [ms] = 8.192ms
 														//preset2的记录时间为40.96ms
@@ -510,30 +512,30 @@ void defaultPGA460(byte xdcr)
 			delay_ms(50);
 			
 			// Update targeted UART_ADDR to address defined in EEPROM bulk switch-case
-			byte uartAddrUpdate = (PULSE_P2 >> 5) & 0x07;
-			if (uartAddr != uartAddrUpdate)
-			{
-				// Update commands to account for new UART addr
-				  // Single Address
-				   P1BL = 0x00 + (uartAddrUpdate << 5);	   
-				   P2BL = 0x01 + (uartAddrUpdate << 5);
-				   P1LO = 0x02 + (uartAddrUpdate << 5);
-				   P2LO = 0x03 + (uartAddrUpdate << 5);
-				   TNLM = 0x04 + (uartAddrUpdate << 5);
-				   UMR = 0x05 + (uartAddrUpdate << 5);
-				   TNLR = 0x06 + (uartAddrUpdate << 5);
-				   TEDD = 0x07 + (uartAddrUpdate << 5);
-				   SD = 0x08 + (uartAddrUpdate << 5);
-				   SRR = 0x09 + (uartAddrUpdate << 5); 
-				   SRW = 0x0A + (uartAddrUpdate << 5);
-				   EEBR = 0x0B + (uartAddrUpdate << 5);
-				   EEBW = 0x0C + (uartAddrUpdate << 5);
-				   TVGBR = 0x0D + (uartAddrUpdate << 5);
-				   TVGBW = 0x0E + (uartAddrUpdate << 5);
-				   THRBR = 0x0F + (uartAddrUpdate << 5);
-				   THRBW = 0x10 + (uartAddrUpdate << 5);				
-			}
-			uartAddr = uartAddrUpdate;
+//			byte uartAddrUpdate = (PULSE_P2 >> 5) & 0x07;
+//			if (uartAddr != uartAddrUpdate)
+//			{
+//				// Update commands to account for new UART addr
+//				  // Single Address
+//				   P1BL = 0x00 + (uartAddrUpdate << 5);	   
+//				   P2BL = 0x01 + (uartAddrUpdate << 5);
+//				   P1LO = 0x02 + (uartAddrUpdate << 5);
+//				   P2LO = 0x03 + (uartAddrUpdate << 5);
+//				   TNLM = 0x04 + (uartAddrUpdate << 5);
+//				   UMR = 0x05 + (uartAddrUpdate << 5);
+//				   TNLR = 0x06 + (uartAddrUpdate << 5);
+//				   TEDD = 0x07 + (uartAddrUpdate << 5);
+//				   SD = 0x08 + (uartAddrUpdate << 5);
+//				   SRR = 0x09 + (uartAddrUpdate << 5); 
+//				   SRW = 0x0A + (uartAddrUpdate << 5);
+//				   EEBR = 0x0B + (uartAddrUpdate << 5);
+//				   EEBW = 0x0C + (uartAddrUpdate << 5);
+//				   TVGBR = 0x0D + (uartAddrUpdate << 5);
+//				   TVGBW = 0x0E + (uartAddrUpdate << 5);
+//				   THRBR = 0x0F + (uartAddrUpdate << 5);
+//				   THRBW = 0x10 + (uartAddrUpdate << 5);				
+//			}
+//			uartAddr = uartAddrUpdate;
 		}
 		else if (comm == 6)
 		{
@@ -577,13 +579,17 @@ byte registerRead(byte addr)
 	{
 		Usart2Send(buf9, sizeof(buf9));
 	}
-
+	delay_ms(10);
 	if (comm == 0 || comm == 2) // UART or OWU mode
 	{
 		starttime = millis();
-		while((Usart2_DataAvailable() == 0)&&((millis()- starttime)<250)){}
+	//	while((Usart2_DataAvailable() == 0)&&((millis()- starttime)<250)){}
 			
-		if(Usart2_DataAvailable() == 0) {printf("can't read the register, adress: %d",addr);return 0;}
+		
+		if(Usart2_DataAvailable() == 0) {
+			printf("can't read the register, adress: %x\n",addr);
+			return 0;
+		}
 		
 		for(int n=0; n<3; n++)
 		{
@@ -597,7 +603,7 @@ byte registerRead(byte addr)
 		   }
 		}
 	}
-	
+	printf("address: %x,---data: %x\n",addr,data);
 	return data;
 }
 	
@@ -1024,7 +1030,7 @@ void ultrasonicCmd(byte cmd, byte numObjUpdate)
 		//do nothing
 	}
 	
-	delay_us(70); // maximum record length is 65ms, so delay with margin
+	delay_ms(70); // maximum record length is 65ms, so delay with margin
 	return;
 }
 
@@ -1072,7 +1078,7 @@ bool pullUltrasonicMeasResult(bool busDemo)
 				if (busDemo == false)
 				{
 					// the data didn't come in - handle the problem here
-					printf("ERROR - Did not receive measurement results!");
+					printf("ERROR - Did not receive measurement results!\n");
 				}
 				return false;
 			}
@@ -1439,7 +1445,7 @@ double runDiagnostics(byte run, byte diag)
 			ultrasonicCmd(0, 1);	// always run preset 1 (short distance) burst+listen for 1 object for system diagnostic
 			
 			
-			delay_us(100); // record time length maximum of 65ms, so add margin
+			delay_ms(10); // record time length maximum of 65ms, so add margin
 			Usart_Flush();
 			
 			byte buf8[3] = {syncByte, SD, calcChecksum(SD)};
@@ -1627,7 +1633,7 @@ bool burnEEPROM()
 			Usart2Send(buf10, sizeof(buf10));
 		}
 
-		delay_us(1000);
+		delay_ms(10);
 		
 		
 		// Read back EEPROM program status
