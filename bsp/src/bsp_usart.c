@@ -220,7 +220,7 @@ int read(void){
 		return Usart2_Getch();
 	}else
 	{
-		return -1;
+		return 0;
 	}
 
 }

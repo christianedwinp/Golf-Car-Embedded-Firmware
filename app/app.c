@@ -29,7 +29,7 @@ uint16_t gHeartbeatCnt = 0;
 //uint16_t IOITDelayCnt = 0;
 const uint16_t kHeartbeatMax = 9;
 
-double objDist = 0,objWidth = 0;
+double objDist[8] ,objWidth[8] ;
 uint16_t TempDis=0,TempWidth=0;
 byte objectDetected = false;
 
@@ -100,6 +100,7 @@ uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
 int main(void)
 {
 	int Cnt;
+	short uartAddrUpdate = 0;
 	int speedSound = 343; // 343 degC at room temperature
 	double digitalDelay = 0.00005*343;
 	RCC_GetClocksFreq(&rcc);
@@ -139,7 +140,7 @@ int main(void)
 			Cnt = Cnt%10;
 			if((Cnt>5)&&(Cnt<10))
 			{
-//				registerRead(0x1f);
+				registerRead(0x1f,0);
 				GPIO_SetBits(GPIOB,GPIO_Pin_13);
 			
 			}else if(Cnt<5){
@@ -149,38 +150,43 @@ int main(void)
 		  }
 		}
 //					//Ultrasonic Routine
-		ultrasonicCmd(0,1);// run preset 1 (short distance) burst+listen for 1 object
 		
-		pullUltrasonicMeasResult(false);      // Pull Ultrasonic Measurement Result
+		ultrasonicCmd(0,1,uartAddrUpdate);// run preset 1 (short distance) burst+listen for 1 object
+		
+		pullUltrasonicMeasResult(false,uartAddrUpdate);      // Pull Ultrasonic Measurement Result
 		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 		TempWidth = ultraMeasResult[3];
-		objDist = (TempDis/2*0.000001*speedSound) - digitalDelay;
-		objWidth= TempWidth * 16;
-		if((objDist>0.15)&(objDist<11.2))
+		objDist[uartAddrUpdate] = (TempDis/2*0.000001*speedSound) - digitalDelay;
+		objWidth[uartAddrUpdate] = TempWidth * 16;
+		if((objDist[uartAddrUpdate]>0.15)&(objDist[uartAddrUpdate]<1.2))
 		{
 			objectDetected = true;
 		}
 		
-//		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
-//		{
-//			ultrasonicCmd(1,1);
-//			pullUltrasonicMeasResult(false);
-//			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-//			TempWidth = ultraMeasResult[3];
-//			if((objDist<11.2)&&(objDist>0))
-//			{
-//				objectDetected = true;
-//				
-//			}else if(objDist == 0)
-//			{
-//			}else{
-//				printf("No object!!!\n");
-//			}
-//		}
+		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
+		{
+			ultrasonicCmd(1,1,uartAddrUpdate);
+			pullUltrasonicMeasResult(false,uartAddrUpdate);
+			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+			TempWidth = ultraMeasResult[3];
+			if((objDist[uartAddrUpdate]<11.2)&&(objDist[uartAddrUpdate]>0))
+			{
+				objectDetected = true;
+				
+			}else if(objDist == 0)
+			{
+			}else{
+				printf("No object!!!\n");
+			}
+		}
+		objectDetected =false;
 		
-//		objDist = (TempDis/2*0.000001*speedSound) - digitalDelay;
-//		objWidth= TempWidth * 16;
-		
+		objDist[uartAddrUpdate] = (TempDis/2*0.000001*speedSound) - digitalDelay;
+		objWidth[uartAddrUpdate]= TempWidth * 16;
+		uartAddrUpdate ++;
+		 uartAddrUpdate =uartAddrUpdate%2;
+		 if(uartAddrUpdate>7) uartAddrUpdate = 7;
+		 else if(uartAddrUpdate<0) uartAddrUpdate = 0;
 	}
 }
 

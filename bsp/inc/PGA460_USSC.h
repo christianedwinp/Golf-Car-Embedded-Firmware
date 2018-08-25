@@ -38,26 +38,27 @@
 #include <stdbool.h>
 #include <stdint.h>
 #define  byte unsigned char
-byte pullEchoDataDump(byte element);
-byte registerRead(byte addr);
-byte registerWrite(byte addr, byte data);
-void initSTM32F1PGA460(byte mode, uint32_t baud, byte uartAddrUpdate);
-void defaultPGA460(byte xdcr);
+byte pullEchoDataDump(byte element,short uartIndex);
+byte registerRead(byte Regaddr, short uartIndex);
+byte registerWrite(byte Regaddr, byte data, short uartIndex);
+void SetPGAAddress(byte uartaddress);
+void initSTM32F1PGA460(byte mode, uint32_t baud);
+void defaultPGA460(byte xdcr,byte usartaddress);
 void Stm32PGAParameter(void);
-void initThresholds(byte thr);
-void initTVG(byte agr, byte tvg);
-void ultrasonicCmd(byte cmd, byte numObjUpdate);
-void runEchoDataDump(byte preset);
+void initThresholds(byte thr,short uartIndex);
+void initTVG(byte agr, byte tvg,short uartIndex);
+void ultrasonicCmd(byte cmd, byte numObjUpdate, short uartIndex);
+void runEchoDataDump(byte preset,short uartIndex);
 void broadcast(bool eeBulk, bool tvgBulk, bool thrBulk);
 void toggleLEDs(bool ds1State, bool fdiagState, bool vdiagState);
-void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, byte avgLoops);
-void eepromThreshold(byte preset, bool saveLoad);
-void thresholdBulkRead(byte preset);
-void thresholdBulkWrite(byte p1ThrMap[], byte p2ThrMap[]);
-bool burnEEPROM(void);
-bool pullUltrasonicMeasResult(bool busDemo);
-double printUltrasonicMeasResult(byte umr);
-double runDiagnostics(byte run, byte diag);
+void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, byte avgLoops,short uartIndex);
+void eepromThreshold(byte preset, bool saveLoad,short uartIndex);
+void thresholdBulkRead(byte preset,short uartIndex);
+void thresholdBulkWrite(byte p1ThrMap[], byte p2ThrMap[],short uartIndex);
+bool burnEEPROM(short uartIndex);
+bool pullUltrasonicMeasResult(bool busDemo,short uartIndex);
+double printUltrasonicMeasResult(byte umr,short uartIndex);
+double runDiagnostics(byte run, byte diag,short uartIndex);
 double triangulation(double a, double b, double c);
 
 byte calcChecksum(byte cmd);

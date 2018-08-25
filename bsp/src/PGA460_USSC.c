@@ -71,24 +71,24 @@
 	#define MAX_MILLIS_TO_WAIT 250
 
 // Define UART commands by name
-	// Single Address
-		byte P1BL = 0x00;
-		byte P2BL = 0x01;
-		byte P1LO = 0x02;
-		byte P2LO = 0x03;
-		byte TNLM = 0x04;
-		byte UMR = 0x05;
-		byte TNLR = 0x06;
-		byte TEDD = 0x07;
-		byte SD = 0x08;
-		byte SRR = 0x09; 
-		byte SRW = 0x0A;
-		byte EEBR = 0x0B;
-		byte EEBW = 0x0C;
-		byte TVGBR = 0x0D;
-		byte TVGBW = 0x0E;
-		byte THRBR = 0x0F;
-		byte THRBW = 0x10; 
+	// Multi Address
+		byte P1BL[8] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+		byte P2BL[8] = {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01};
+		byte P1LO[8] = {0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02};
+		byte P2LO[8] = {0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03};
+		byte TNLM[8] = {0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04};
+		byte UMR[8] = {0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05};
+		byte TNLR[8] = {0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06};
+		byte TEDD[8] = {0x07,0x07,0x07,0x07,0x07,0x07,0x07,0x07};
+		byte SD[8] = {0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x08};
+		byte SRR[8] = {0x09,0x09,0x09,0x09,0x09,0x09,0x09,0x09}; 
+		byte SRW[8] = {0x0A,0x0A,0x0A,0x0A,0x0A,0x0A,0x0A,0x0A};
+		byte EEBR[8] = {0x0B,0x0B,0x0B,0x0B,0x0B,0x0B,0x0B,0x0B};
+		byte EEBW[8] = {0x0C,0x0C,0x0C,0x0C,0x0C,0x0C,0x0C,0x0C};
+		byte TVGBR[8] = {0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D};
+		byte TVGBW[8] = {0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E};
+		byte THRBR[8] = {0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F};
+		byte THRBW[8] = {0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10}; 
 	//Broadcast
 		byte BC_P1BL = 0x11;
 		byte BC_P2BL = 0x12;
@@ -231,41 +231,62 @@
  |  Returns:  none
  *-------------------------------------------------------------------*/
  uint8_t PGAUartAddr = 0;
-void initSTM32F1PGA460(byte mode, uint32_t baud, byte uartAddrUpdate)
+ byte dataw;
+void SetPGAAddress(byte uartaddress)
 {
+	short i ;
+	byte rd;
+	for(i=0;i<8;i++)
+	{
+		rd = registerRead(0x1f,i);
+		if(rd != 0)
+		{
+			PGAUartAddr = rd & 0xe0;
+			printf("uart address is %x\n",PGAUartAddr>>5);
+			break;
+		}
+		else if(i == 7)
+		{
+			printf("can't read uart address and can't set uart address!\n");
+		}
+	}
+	//set uart address
+	
+	dataw = (rd&0x1f)+(uartaddress<<5);
+	printf("uartaddress %x\n",uartaddress);
+	registerWrite(0x1f,dataw,PGAUartAddr>>5);
+}
+void initSTM32F1PGA460(byte mode, uint32_t baud)
+{
+	int i;
+	byte uartAddrUpdate;
 	BSP_Usart2Init(baud);	// initialize PGA460 UART serial channel
 	delay_ms(50);
 
-	// check for valid UART address
-	if (uartAddrUpdate > 7)
-	{
-		uartAddrUpdate = 0; // default to '0'
-//		Serial.println("ERROR - Invalid UART Address!");
-	}
 	// globally update target PGA460 UART address and commands	
-	if (uartAddr != uartAddrUpdate)
+	for(i=0;i<8;i++)
 	{
 		// Update commands to account for new UART addr
-		  // Single Address
-		   P1BL = 0x00 + (uartAddrUpdate << 5);	   
-		   P2BL = 0x01 + (uartAddrUpdate << 5);
-		   P1LO = 0x02 + (uartAddrUpdate << 5);
-		   P2LO = 0x03 + (uartAddrUpdate << 5);
-		   TNLM = 0x04 + (uartAddrUpdate << 5);
-		   UMR = 0x05 + (uartAddrUpdate << 5);
-		   TNLR = 0x06 + (uartAddrUpdate << 5);
-		   TEDD = 0x07 + (uartAddrUpdate << 5);
-		   SD = 0x08 + (uartAddrUpdate << 5);
-		   SRR = 0x09 + (uartAddrUpdate << 5); 
-		   SRW = 0x0A + (uartAddrUpdate << 5);
-		   EEBR = 0x0B + (uartAddrUpdate << 5);
-		   EEBW = 0x0C + (uartAddrUpdate << 5);
-		   TVGBR = 0x0D + (uartAddrUpdate << 5);
-		   TVGBW = 0x0E + (uartAddrUpdate << 5);
-		   THRBR = 0x0F + (uartAddrUpdate << 5);
-		   THRBW = 0x10 + (uartAddrUpdate << 5); 
+		  // Multi Address
+		uartAddrUpdate = i;
+		   P1BL[i] = 0x00 + (uartAddrUpdate << 5);	   
+		   P2BL[i] = 0x01 + (uartAddrUpdate << 5);
+		   P1LO[i] = 0x02 + (uartAddrUpdate << 5);
+		   P2LO[i] = 0x03 + (uartAddrUpdate << 5);
+		   TNLM[i] = 0x04 + (uartAddrUpdate << 5);
+		   UMR[i] = 0x05 + (uartAddrUpdate << 5);
+		   TNLR[i] = 0x06 + (uartAddrUpdate << 5);
+		   TEDD[i] = 0x07 + (uartAddrUpdate << 5);
+		   SD[i] = 0x08 + (uartAddrUpdate << 5);
+		   SRR[i] = 0x09 + (uartAddrUpdate << 5); 
+		   SRW[i] = 0x0A + (uartAddrUpdate << 5);
+		   EEBR[i] = 0x0B + (uartAddrUpdate << 5);
+		   EEBW[i] = 0x0C + (uartAddrUpdate << 5);
+		   TVGBR[i] = 0x0D + (uartAddrUpdate << 5);
+		   TVGBW[i] = 0x0E + (uartAddrUpdate << 5);
+		   THRBR[i] = 0x0F + (uartAddrUpdate << 5);
+		   THRBW[i] = 0x10 + (uartAddrUpdate << 5); 
 	}
-	uartAddr = uartAddrUpdate;
 	
 	// turn on LP's Red LED to indicate code has started to run
 //	pinMode(RED_LED, OUTPUT); digitalWrite(RED_LED, HIGH);
@@ -309,7 +330,7 @@ void initSTM32F1PGA460(byte mode, uint32_t baud, byte uartAddrUpdate)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void defaultPGA460(byte xdcr)
+void defaultPGA460(byte xdcr,byte addr)
 {
 	switch (xdcr)
 	{
@@ -460,7 +481,7 @@ void defaultPGA460(byte xdcr)
 												 //这里设置成了usart模式，IO transceiver enabled
 												 //用于驱动短距离物体的检测
 		   }
-		   PULSE_P2 = 0x10;  //preset2的脉冲数为16个，一般用于驱动长距离物体的检测
+		   PULSE_P2 = 0x10 + (addr<<5);  //preset2的脉冲数为16个，一般用于驱动长距离物体的检测
 												 //这里把PGA的串口地址设为0，我们在这里将其更改为
 												 //其他的串口地址
 		   CURR_LIM_P1 = 0x40; //使能preset1和preset2的电流限制，preset1的电流限制为7 * CURR_LIM1 + 50 [mA] = 498mA
@@ -486,44 +507,18 @@ void defaultPGA460(byte xdcr)
 		
 		if ((comm == 0 || comm == 2 || comm ==3) && (comm !=6)) // USART or OWU mode and not busDemo6
 		{
-			byte buf12[46] = {syncByte, EEBW, USER_DATA1, USER_DATA2, USER_DATA3, USER_DATA4, USER_DATA5, USER_DATA6,
+			byte buf12[46] = {syncByte, EEBW[addr], USER_DATA1, USER_DATA2, USER_DATA3, USER_DATA4, USER_DATA5, USER_DATA6,
 				USER_DATA7, USER_DATA8, USER_DATA9, USER_DATA10, USER_DATA11, USER_DATA12, USER_DATA13, USER_DATA14, 
 				USER_DATA15,USER_DATA16,USER_DATA17,USER_DATA18,USER_DATA19,USER_DATA20,
 				TVGAIN0,TVGAIN1,TVGAIN2,TVGAIN3,TVGAIN4,TVGAIN5,TVGAIN6,INIT_GAIN,FREQUENCY,DEADTIME,
 				PULSE_P1,PULSE_P2,CURR_LIM_P1,CURR_LIM_P2,REC_LENGTH,FREQ_DIAG,SAT_FDIAG_TH,FVOLT_DEC,DECPL_TEMP,
-				DSP_SCALE,TEMP_TRIM,P1_GAIN_CTRL,P2_GAIN_CTRL,calcChecksum(EEBW)};
+				DSP_SCALE,TEMP_TRIM,P1_GAIN_CTRL,P2_GAIN_CTRL,calcChecksum(EEBW[addr])};
 		
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
 				Usart2Send(buf12, sizeof(buf12));
 			}
 			delay_ms(50);
-			
-			// Update targeted UART_ADDR to address defined in EEPROM bulk switch-case
-			byte uartAddrUpdate = (PULSE_P2 >> 5) & 0x07;
-			if (uartAddr != uartAddrUpdate)
-			{
-				// Update commands to account for new UART addr
-				  // Single Address
-				   P1BL = 0x00 + (uartAddrUpdate << 5);	   
-				   P2BL = 0x01 + (uartAddrUpdate << 5);
-				   P1LO = 0x02 + (uartAddrUpdate << 5);
-				   P2LO = 0x03 + (uartAddrUpdate << 5);
-				   TNLM = 0x04 + (uartAddrUpdate << 5);
-				   UMR = 0x05 + (uartAddrUpdate << 5);
-				   TNLR = 0x06 + (uartAddrUpdate << 5);
-				   TEDD = 0x07 + (uartAddrUpdate << 5);
-				   SD = 0x08 + (uartAddrUpdate << 5);
-				   SRR = 0x09 + (uartAddrUpdate << 5); 
-				   SRW = 0x0A + (uartAddrUpdate << 5);
-				   EEBR = 0x0B + (uartAddrUpdate << 5);
-				   EEBW = 0x0C + (uartAddrUpdate << 5);
-				   TVGBR = 0x0D + (uartAddrUpdate << 5);
-				   TVGBW = 0x0E + (uartAddrUpdate << 5);
-				   THRBR = 0x0F + (uartAddrUpdate << 5);
-				   THRBW = 0x10 + (uartAddrUpdate << 5);				
-			}
-			uartAddr = uartAddrUpdate;
 		}
 		else if (comm == 6)
 		{
@@ -545,7 +540,7 @@ void defaultPGA460(byte xdcr)
  |
  |  Returns:  8-bit data read from register
  *-------------------------------------------------------------------*/
-byte registerRead(byte addr)
+byte registerRead(byte addr,short uartIndex)
 {
 	byte data = 0x00;
 	byte temp = 0;
@@ -562,8 +557,8 @@ byte registerRead(byte addr)
 	Usart_Flush();
 	
 	regAddr = addr;
-	byte buf9[4] = {syncByte, SRR, regAddr, calcChecksum(SRR)};
-	printf("read cmd : %x,%x,%x,%x\n",syncByte, SRR, regAddr, calcChecksum(SRR));
+	byte buf9[4] = {syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex])};
+	printf("read cmd : %x,%x,%x,%x\n",syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex]));
 	if (comm == 0 || comm == 2) // UART or OWU mode
 	{
 		Usart2Send(buf9, sizeof(buf9));
@@ -607,11 +602,11 @@ byte registerRead(byte addr)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-byte registerWrite(byte addr, byte data)
+byte registerWrite(byte addr, byte data,short uartIndex)
 {
 	regAddr = addr;
 	regData = data;	
-	byte buf10[5] = {syncByte, SRW, regAddr, regData, calcChecksum(SRW)};
+	byte buf10[5] = {syncByte, SRW[uartIndex], regAddr, regData, calcChecksum(SRW[uartIndex])};
 	if (comm == 0 || comm == 2) // UART or OWU mode
 	{
 		Usart2Send(buf10, sizeof(buf10));
@@ -634,7 +629,7 @@ byte registerWrite(byte addr, byte data)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void initThresholds(byte thr)
+void initThresholds(byte thr,short uartIndex)
 {
 	switch (thr)
 	{
@@ -783,11 +778,11 @@ void initThresholds(byte thr)
 				  
 	if ((comm == 0 || comm == 2 || comm==3) && (comm !=6)) 	// USART or OWU mode and not busDemo6
 	{
-		byte buf16[35] = {syncByte, THRBW, P1_THR_0, P1_THR_1, P1_THR_2, P1_THR_3, P1_THR_4, P1_THR_5, P1_THR_6,
+		byte buf16[35] = {syncByte, THRBW[uartIndex], P1_THR_0, P1_THR_1, P1_THR_2, P1_THR_3, P1_THR_4, P1_THR_5, P1_THR_6,
 			  P1_THR_7, P1_THR_8, P1_THR_9, P1_THR_10, P1_THR_11, P1_THR_12, P1_THR_13, P1_THR_14, P1_THR_15,
 			  P2_THR_0, P2_THR_1, P2_THR_2, P2_THR_3, P2_THR_4, P2_THR_5, P2_THR_6, 
 			  P2_THR_7, P2_THR_8, P2_THR_9, P2_THR_10, P2_THR_11, P2_THR_12, P2_THR_13, P2_THR_14, P2_THR_15,
-			  calcChecksum(THRBW)};
+			  calcChecksum(THRBW[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf16, sizeof(buf16)); // serial transmit master data for bulk threhsold
@@ -827,7 +822,7 @@ void initThresholds(byte thr)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void initTVG(byte agr, byte tvg)
+void initTVG(byte agr, byte tvg,short uartIndex)
 {
 	byte gain_range = 0x4F;
 	// set AFE gain range
@@ -852,7 +847,7 @@ void initTVG(byte agr, byte tvg)
 	{
 		regAddr = 0x26;
 		regData = gain_range;	
-		byte buf10[5] = {syncByte, SRW, regAddr, regData, calcChecksum(SRW)};
+		byte buf10[5] = {syncByte, SRW[uartIndex], regAddr, regData, calcChecksum(SRW[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf10, sizeof(buf10));
@@ -905,7 +900,7 @@ void initTVG(byte agr, byte tvg)
 	
 	if ((comm == 0 || comm == 2 || comm == 3) && (comm !=6)) 	// USART or OWU mode and not busDemo6
 	{
-		byte buf14[10] = {syncByte, TVGBW, TVGAIN0, TVGAIN1, TVGAIN2, TVGAIN3, TVGAIN4, TVGAIN5, TVGAIN6, calcChecksum(TVGBW)};
+		byte buf14[10] = {syncByte, TVGBW[uartIndex], TVGAIN0, TVGAIN1, TVGAIN2, TVGAIN3, TVGAIN4, TVGAIN5, TVGAIN6, calcChecksum(TVGBW[uartIndex])};
 		
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
@@ -940,7 +935,7 @@ void initTVG(byte agr, byte tvg)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void ultrasonicCmd(byte cmd, byte numObjUpdate)
+void ultrasonicCmd(byte cmd, byte numObjUpdate,short uartIndex)
 {	
 	numObj = numObjUpdate; // number of objects to detect
 	byte bufCmd[4] = {syncByte, 0xFF, numObj, 0xFF}; // prepare bufCmd with 0xFF placeholders
@@ -955,26 +950,26 @@ void ultrasonicCmd(byte cmd, byte numObjUpdate)
 		// SINGLE ADDRESS		
 		case 0: // Send Preset 1 Burst + Listen command
 		{			
-			bufCmd[1] = P1BL;
-			bufCmd[3] = calcChecksum(P1BL);
+			bufCmd[1] = P1BL[uartIndex];
+			bufCmd[3] = calcChecksum(P1BL[uartIndex]);
 			break;
 		}
 		case 1: // Send Preset 2 Burst + Listen command
 		{			
-			bufCmd[1] = P2BL;
-			bufCmd[3] = calcChecksum(P2BL);
+			bufCmd[1] = P2BL[uartIndex];
+			bufCmd[3] = calcChecksum(P2BL[uartIndex]);
 			break;
 		}	
 		case 2: // Send Preset 1 Listen Only command
 		{			
-			bufCmd[1] = P1LO;
-			bufCmd[3] = calcChecksum(P1LO);
+			bufCmd[1] = P1LO[uartIndex];
+			bufCmd[3] = calcChecksum(P1LO[uartIndex]);
 			break;
 		}
 		case 3: // Send Preset 2 Listen Only command
 		{			
-			bufCmd[1] = P2LO;
-			bufCmd[3] = calcChecksum(P2LO);
+			bufCmd[1] = P2LO[uartIndex];
+			bufCmd[3] = calcChecksum(P2LO[uartIndex]);
 			break;
 		}	
 		
@@ -1034,7 +1029,7 @@ void ultrasonicCmd(byte cmd, byte numObjUpdate)
  |
  |  Returns:  If measurement data successfully read, return true.
  *-------------------------------------------------------------------*/
-bool pullUltrasonicMeasResult(bool busDemo)
+bool pullUltrasonicMeasResult(bool busDemo,short uartIndex)
 {
 	if (comm != 1) // USART or OWU mode
 	{
@@ -1048,7 +1043,7 @@ bool pullUltrasonicMeasResult(bool busDemo)
 		}
 		else owuShift = 0;
 		
-		byte buf5[3] = {syncByte, UMR, calcChecksum(UMR)};
+		byte buf5[3] = {syncByte, UMR[uartIndex], calcChecksum(UMR[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf5, sizeof(buf5)); //serial transmit master data to read ultrasonic measurement results
@@ -1118,7 +1113,7 @@ bool pullUltrasonicMeasResult(bool busDemo)
  |
  |  Returns:  double representation of distance (m), width (us), or amplitude (8-bit)
  *-------------------------------------------------------------------*/
-double printUltrasonicMeasResult(byte umr)
+double printUltrasonicMeasResult(byte umr,short uartIndex)
 {
 	int speedSound = 343; // 343 degC at room temperature
 	double objReturn = 0;
@@ -1295,14 +1290,14 @@ double printUltrasonicMeasResult(byte umr)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void runEchoDataDump(byte preset)
+void runEchoDataDump(byte preset,short uartIndex)
 {
 	if (comm != 1) // USART or OWU mode
 	{	
 		// enable Echo Data Dump bit
 		regAddr = 0x40;
 		regData = 0x80;
-		byte buf10[5] = {syncByte, SRW, regAddr, regData, calcChecksum(SRW)};
+		byte buf10[5] = {syncByte, SRW[uartIndex], regAddr, regData, calcChecksum(SRW[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart_Flush();
@@ -1312,12 +1307,12 @@ void runEchoDataDump(byte preset)
 		delay_ms(2);
 		
 		// run preset 1 or 2 burst and or listen command
-		ultrasonicCmd(preset, 1);	
+		ultrasonicCmd(preset, 1,uartIndex);	
 
 		// disbale Echo Data Dump bit
 		regData = 0x00;
 		buf10[3] = regData;
-		buf10[4] = calcChecksum(SRW);
+		buf10[4] = calcChecksum(SRW[uartIndex]);
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf10, sizeof(buf10));
@@ -1343,7 +1338,7 @@ void runEchoDataDump(byte preset)
  |
  |  Returns:  byte representation of EDD element value
  *-------------------------------------------------------------------*/
-byte pullEchoDataDump(byte element)
+byte pullEchoDataDump(byte element,short uartIndex)
 {
 	if (comm != 1 && comm != 3) // UART or OWU mode
 	{
@@ -1362,13 +1357,14 @@ byte pullEchoDataDump(byte element)
 			}	
 			
 			regAddr = 0x80; // start of EDD memory
-			byte buf9[4] = {syncByte, SRR, regAddr, calcChecksum(SRR)}; 
+		
+			byte buf9[4] = {syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex])}; 
 			Usart2Send(buf9, sizeof(buf9)); // read first byte of EDD memory		
 			
 			for(int m=0; m<129; m++) // loop readout by iterating through EDD address range
 			{
 			   buf9[2] = regAddr;
-			   buf9[3] = calcChecksum(SRR);
+			   buf9[3] = calcChecksum(SRR[uartIndex]);
 			   Usart2Send(buf9, sizeof(buf9));
 			   delay_us(80);	 
 			   
@@ -1413,7 +1409,7 @@ byte pullEchoDataDump(byte element)
  |
  |  Returns:  double representation of last captured diagnostic
  *-------------------------------------------------------------------*/
-double runDiagnostics(byte run, byte diag)
+double runDiagnostics(byte run, byte diag,short uartIndex)
 {
 	double diagReturn = 0;
 	Usart_Flush();
@@ -1431,13 +1427,13 @@ double runDiagnostics(byte run, byte diag)
 		if (run == 1) // issue  P1 burst+listen, and run system diagnostics command to get latest results
 		{
 			// run burst+listen command at least once for proper diagnostic analysis
-			ultrasonicCmd(0, 1);	// always run preset 1 (short distance) burst+listen for 1 object for system diagnostic
+			ultrasonicCmd(0, 1,uartIndex);	// always run preset 1 (short distance) burst+listen for 1 object for system diagnostic
 			
 			
 			delay_ms(10); // record time length maximum of 65ms, so add margin
 			Usart_Flush();
 			
-			byte buf8[3] = {syncByte, SD, calcChecksum(SD)};
+			byte buf8[3] = {syncByte, SD[uartIndex], calcChecksum(SD[uartIndex])};
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
 				Usart2Send(buf8, sizeof(buf8)); //serial transmit master data to read system diagnostic results			
@@ -1465,7 +1461,7 @@ double runDiagnostics(byte run, byte diag)
 		if (diag == 2) //run temperature measurement
 		{
 			tempOrNoise = 0; // temp meas
-			byte buf4[4] = {syncByte, TNLM, tempOrNoise, calcChecksum(TNLM)}; 
+			byte buf4[4] = {syncByte, TNLM[uartIndex], tempOrNoise, calcChecksum(TNLM[uartIndex])}; 
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
 				Usart2Send(buf4, sizeof(buf4)); //serial transmit master data to run temp measurement
@@ -1474,7 +1470,7 @@ double runDiagnostics(byte run, byte diag)
 				delay_us(10);
 			}
 			
-			byte buf6[3] = {syncByte, TNLR, calcChecksum(TNLR)};
+			byte buf6[3] = {syncByte, TNLR[uartIndex], calcChecksum(TNLR[uartIndex])};
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
 				Usart2Send(buf6, sizeof(buf6)); //serial transmit master data to read temperature and noise results
@@ -1486,7 +1482,7 @@ double runDiagnostics(byte run, byte diag)
 		if (diag == 3) // run noise level meas
 		{
 			tempOrNoise = 1; // noise meas
-			byte buf4[4] = {syncByte, TNLM, tempOrNoise, calcChecksum(TNLM)};
+			byte buf4[4] = {syncByte, TNLM[uartIndex], tempOrNoise, calcChecksum(TNLM[uartIndex])};
 			
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
@@ -1497,7 +1493,7 @@ double runDiagnostics(byte run, byte diag)
 			Usart_Flush();
 			delay_us(10);
 			
-			byte buf6[3] = {syncByte, TNLR, calcChecksum(TNLR)}; //serial transmit master data to read temperature and noise results
+			byte buf6[3] = {syncByte, TNLR[uartIndex], calcChecksum(TNLR[uartIndex])}; //serial transmit master data to read temperature and noise results
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
 				Usart2Send(buf6, sizeof(buf6));
@@ -1590,7 +1586,7 @@ double runDiagnostics(byte run, byte diag)
  |
  |  Returns:  bool representation of EEPROM program success
  *-------------------------------------------------------------------*/
-bool burnEEPROM()
+bool burnEEPROM(short uartIndex)
 {
 	byte burnStat = 0;
 	byte temp = 0;
@@ -1602,7 +1598,7 @@ bool burnEEPROM()
 		// Write "0xD" to EE_UNLCK to unlock EEPROM, and '0' to EEPRGM bit at EE_CNTRL register
 		regAddr = 0x40; //EE_CNTRL
 		regData = 0x68;
-		byte buf10[5] = {syncByte, SRW, regAddr, regData, calcChecksum(SRW)};
+		byte buf10[5] = {syncByte, SRW[uartIndex], regAddr, regData, calcChecksum(SRW[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf10, sizeof(buf10));
@@ -1616,7 +1612,7 @@ bool burnEEPROM()
 		regData = 0x69;
 		buf10[2] = regAddr;
 		buf10[3] = regData;
-		buf10[4] = calcChecksum(SRW);
+		buf10[4] = calcChecksum(SRW[uartIndex]);
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf10, sizeof(buf10));
@@ -1632,7 +1628,7 @@ bool burnEEPROM()
 		}	
 		Usart_Flush();
 		regAddr = 0x40; //EE_CNTRL
-		byte buf9[4] = {syncByte, SRR, regAddr, calcChecksum(SRR)};
+		byte buf9[4] = {syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf9, sizeof(buf9));
@@ -1746,7 +1742,7 @@ void broadcast(bool eeBulk, bool tvgBulk, bool thrBulk)
 byte calcChecksum(byte cmd)
 {
 	int checksumLoops = 0;
-	
+	byte uartaddress = (cmd&0xe0);
 	cmd = cmd & 0x001F; // zero-mask command address of cmd to select correct switch-case statement
 	
 	switch(cmd)
@@ -1893,7 +1889,7 @@ byte calcChecksum(byte cmd)
 
 	if (ChecksumInput[0]<17) //only re-append command address for non-broadcast commands.
 	{
-		ChecksumInput[0] = ChecksumInput[0] + (uartAddr << 5);
+		ChecksumInput[0] = ChecksumInput[0] + uartaddress ;
 	}
 	
 	uint16_t carry = 0;
@@ -1979,7 +1975,7 @@ double triangulation(double a, double b, double c)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, byte avgLoops)
+void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, byte avgLoops,short uartIndex)
 {
 	// local variables
 	byte thrTime[6]; // threshold time values for selected preset
@@ -1995,12 +1991,12 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 		//Preset 1 command
 		case 0:
 		case 2:
-			thresholdBulkRead(1);			
+			thresholdBulkRead(1,uartIndex);			
 			break;		
 		//Preset 2 command
 		case 1:
 		case 3:
-			thresholdBulkRead(2);
+			thresholdBulkRead(2,uartIndex);
 			presetOffset = 16;
 			break;		
 		//Invalid command
@@ -2042,10 +2038,10 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 	}
 
 	// run burst-and-listen to collect EDD data
-	runEchoDataDump(cmd);
+	runEchoDataDump(cmd,uartIndex);
 	
 	// read the record length value for the preset
-	byte recLength = registerRead(0x22); // read REC_LENGTH Register
+	byte recLength = registerRead(0x22,uartIndex); // read REC_LENGTH Register
 	switch(cmd)
 	{
 		//Preset 1 command
@@ -2152,7 +2148,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 		eddLevel = 0;
 		for (byte k = eddIndex[j]; k < eddIndex[j+1]; k++)
 		{
-			eddLevel = pullEchoDataDump(k);
+			eddLevel = pullEchoDataDump(k,uartIndex);
 			if (thrMax[j] < eddLevel)
 			{
 				thrMax[j] = eddLevel;
@@ -2320,7 +2316,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 			P1_THR_14 = thrLevel[8];
 			P1_THR_15 = thrLevel[9];
 			
-			thresholdBulkRead(2);
+			thresholdBulkRead(2,uartIndex);
 			presetOffset = 16;
 			
 			P2_THR_0 = bulkThr[0 + presetOffset];
@@ -2360,7 +2356,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 			P2_THR_14 = thrLevel[8];
 			P2_THR_15 = thrLevel[9];
 			
-			thresholdBulkRead(1);
+			thresholdBulkRead(1,uartIndex);
 			presetOffset = 0;
 			
 			P1_THR_0 = bulkThr[0 + presetOffset];
@@ -2392,7 +2388,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 							P2_THR_6, P2_THR_7, P2_THR_8, P2_THR_9, P2_THR_10, P2_THR_11,
 							P2_THR_12, P2_THR_13, P2_THR_14, P2_THR_15};
 							
-	thresholdBulkWrite(p1ThrMap, p2ThrMap);
+	thresholdBulkWrite(p1ThrMap, p2ThrMap,uartIndex);
 
 }
 
@@ -2406,7 +2402,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void thresholdBulkRead(byte preset)
+void thresholdBulkRead(byte preset,short uartIndex)
 {
 
 //	byte n = 0;
@@ -2425,7 +2421,7 @@ void thresholdBulkRead(byte preset)
 			
 			for (int n = 0; n<16; n++)
 			{
-				bulkThr[n + presetOffset] = registerRead(addr + presetOffset);
+				bulkThr[n + presetOffset] = registerRead(addr + presetOffset,uartIndex);
 				addr++;
 			}		
 			
@@ -2464,18 +2460,18 @@ void thresholdBulkRead(byte preset)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void thresholdBulkWrite(byte *p1ThrMap, byte *p2ThrMap)
+void thresholdBulkWrite(byte *p1ThrMap, byte *p2ThrMap,short uartIndex)
 {
 	//bulk write new threshold values
 	if ((comm == 0 || comm == 2 || comm==3) && (comm !=6)) 	// USART or OWU mode and not busDemo6
 	{
-		byte buf16[35] = {syncByte,	THRBW, p1ThrMap[0], p1ThrMap[1], p1ThrMap[2], p1ThrMap[3], p1ThrMap[4], p1ThrMap[5],
+		byte buf16[35] = {syncByte,	THRBW[uartIndex], p1ThrMap[0], p1ThrMap[1], p1ThrMap[2], p1ThrMap[3], p1ThrMap[4], p1ThrMap[5],
 			p1ThrMap[6], p1ThrMap[7], p1ThrMap[8], p1ThrMap[9], p1ThrMap[10], p1ThrMap[11], p1ThrMap[12],
 			p1ThrMap[13], p1ThrMap[14], p1ThrMap[15],
 			p2ThrMap[0], p2ThrMap[1], p2ThrMap[2], p2ThrMap[3], p2ThrMap[4], p2ThrMap[5],
 			p2ThrMap[6], p2ThrMap[7], p2ThrMap[8], p2ThrMap[9], p2ThrMap[10], p2ThrMap[11], p2ThrMap[12],
 			p2ThrMap[13], p2ThrMap[14], p2ThrMap[15],
-			calcChecksum(THRBW)};
+			calcChecksum(THRBW[uartIndex])};
 		if (comm == 0 || comm == 2) // UART or OWU mode
 		{
 			Usart2Send(buf16, sizeof(buf16)); // serial transmit master data for bulk threhsold
@@ -2508,7 +2504,7 @@ void thresholdBulkWrite(byte *p1ThrMap, byte *p2ThrMap)
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void eepromThreshold(byte preset, bool saveLoad)
+void eepromThreshold(byte preset, bool saveLoad,short uartIndex)
 {
 	byte presetOffset = 0;
 	byte addr = 0x5F; // beginning of threshold memory space
@@ -2523,9 +2519,9 @@ void eepromThreshold(byte preset, bool saveLoad)
 		
 		for (int n = 0; n<16; n++)
 		{
-			bulkThr[n + presetOffset] = registerRead(addr + presetOffset);
+			bulkThr[n + presetOffset] = registerRead(addr + presetOffset,uartIndex);
 			// write threshold values into USER_DATA1-16
-			registerWrite(n, bulkThr[n + presetOffset]);
+			registerWrite(n, bulkThr[n + presetOffset],uartIndex);
 			addr++;
 		}
 	}
@@ -2540,9 +2536,9 @@ void eepromThreshold(byte preset, bool saveLoad)
 		// copy USER_DATA1-16 into selected preset threhsold space
 		for (int n = 0; n<16; n++)
 		{
-			bulkThr[n + presetOffset] = registerRead(n);
+			bulkThr[n + presetOffset] = registerRead(n,uartIndex);
 			// bulk write to threshold
-			registerWrite(addr + presetOffset, bulkThr[n + presetOffset]);
+			registerWrite(addr + presetOffset, bulkThr[n + presetOffset],uartIndex);
 			addr++;
 		}
 	}
