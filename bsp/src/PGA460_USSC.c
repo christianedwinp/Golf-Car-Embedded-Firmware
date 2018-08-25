@@ -235,18 +235,7 @@ void initSTM32F1PGA460(byte mode, uint32_t baud, byte uartAddrUpdate)
 {
 	BSP_Usart2Init(baud);	// initialize PGA460 UART serial channel
 	delay_ms(50);
-	byte rd = 0x11;
-	rd = registerRead(0x1f);
-//	PGAUartAddr = 0xe0&rd;
-	regAddr = 0x1f;
-	SRW = 0x0A + PGAUartAddr;
-	regData = uartAddrUpdate + 0x1f&rd;
-	byte buf[5] = {syncByte,SRW,regAddr,regData,calcChecksum(SRW) };	
 
-	if(PGAUartAddr != uartAddrUpdate)
-	{
-		Usart2Send(buf,sizeof(buf));
-	}
 	// check for valid UART address
 	if (uartAddrUpdate > 7)
 	{
@@ -507,35 +496,34 @@ void defaultPGA460(byte xdcr)
 			if (comm == 0 || comm == 2) // UART or OWU mode
 			{
 				Usart2Send(buf12, sizeof(buf12));
-				//Serial1.write(buf12, sizeof(buf12)); // serial transmit master data for bulk EEPROM
 			}
 			delay_ms(50);
 			
 			// Update targeted UART_ADDR to address defined in EEPROM bulk switch-case
-//			byte uartAddrUpdate = (PULSE_P2 >> 5) & 0x07;
-//			if (uartAddr != uartAddrUpdate)
-//			{
-//				// Update commands to account for new UART addr
-//				  // Single Address
-//				   P1BL = 0x00 + (uartAddrUpdate << 5);	   
-//				   P2BL = 0x01 + (uartAddrUpdate << 5);
-//				   P1LO = 0x02 + (uartAddrUpdate << 5);
-//				   P2LO = 0x03 + (uartAddrUpdate << 5);
-//				   TNLM = 0x04 + (uartAddrUpdate << 5);
-//				   UMR = 0x05 + (uartAddrUpdate << 5);
-//				   TNLR = 0x06 + (uartAddrUpdate << 5);
-//				   TEDD = 0x07 + (uartAddrUpdate << 5);
-//				   SD = 0x08 + (uartAddrUpdate << 5);
-//				   SRR = 0x09 + (uartAddrUpdate << 5); 
-//				   SRW = 0x0A + (uartAddrUpdate << 5);
-//				   EEBR = 0x0B + (uartAddrUpdate << 5);
-//				   EEBW = 0x0C + (uartAddrUpdate << 5);
-//				   TVGBR = 0x0D + (uartAddrUpdate << 5);
-//				   TVGBW = 0x0E + (uartAddrUpdate << 5);
-//				   THRBR = 0x0F + (uartAddrUpdate << 5);
-//				   THRBW = 0x10 + (uartAddrUpdate << 5);				
-//			}
-//			uartAddr = uartAddrUpdate;
+			byte uartAddrUpdate = (PULSE_P2 >> 5) & 0x07;
+			if (uartAddr != uartAddrUpdate)
+			{
+				// Update commands to account for new UART addr
+				  // Single Address
+				   P1BL = 0x00 + (uartAddrUpdate << 5);	   
+				   P2BL = 0x01 + (uartAddrUpdate << 5);
+				   P1LO = 0x02 + (uartAddrUpdate << 5);
+				   P2LO = 0x03 + (uartAddrUpdate << 5);
+				   TNLM = 0x04 + (uartAddrUpdate << 5);
+				   UMR = 0x05 + (uartAddrUpdate << 5);
+				   TNLR = 0x06 + (uartAddrUpdate << 5);
+				   TEDD = 0x07 + (uartAddrUpdate << 5);
+				   SD = 0x08 + (uartAddrUpdate << 5);
+				   SRR = 0x09 + (uartAddrUpdate << 5); 
+				   SRW = 0x0A + (uartAddrUpdate << 5);
+				   EEBR = 0x0B + (uartAddrUpdate << 5);
+				   EEBW = 0x0C + (uartAddrUpdate << 5);
+				   TVGBR = 0x0D + (uartAddrUpdate << 5);
+				   TVGBW = 0x0E + (uartAddrUpdate << 5);
+				   THRBR = 0x0F + (uartAddrUpdate << 5);
+				   THRBW = 0x10 + (uartAddrUpdate << 5);				
+			}
+			uartAddr = uartAddrUpdate;
 		}
 		else if (comm == 6)
 		{
@@ -575,6 +563,7 @@ byte registerRead(byte addr)
 	
 	regAddr = addr;
 	byte buf9[4] = {syncByte, SRR, regAddr, calcChecksum(SRR)};
+	printf("read cmd : %x,%x,%x,%x\n",syncByte, SRR, regAddr, calcChecksum(SRR));
 	if (comm == 0 || comm == 2) // UART or OWU mode
 	{
 		Usart2Send(buf9, sizeof(buf9));
@@ -1072,7 +1061,7 @@ bool pullUltrasonicMeasResult(bool busDemo)
 			{      
 				// wait in this loop until we either get +5 bytes of data, or 0.25 seconds have gone by
 			}
-			
+			delay_ms(10);
 			if((Usart2_DataAvailable() < (5+owuShift)))
 			{
 				if (busDemo == false)
@@ -1620,7 +1609,7 @@ bool burnEEPROM()
 		}
 
 		
-		delay_ms(10);
+		delay_ms(1);
 		
 		// Write "0xD" to EE_UNLCK to unlock EEPROM, and '1' to EEPRGM bit at EE_CNTRL register
 		regAddr = 0x40; //EE_CNTRL
@@ -1633,7 +1622,7 @@ bool burnEEPROM()
 			Usart2Send(buf10, sizeof(buf10));
 		}
 
-		delay_ms(10);
+		delay_ms(1000);
 		
 		
 		// Read back EEPROM program status
@@ -1656,7 +1645,7 @@ bool burnEEPROM()
 			{
 			   if(n==1-owuShift)
 			   {
-					burnStat = read(); // store EE_CNTRL data
+					 burnStat = read(); // store EE_CNTRL data
 			   }
 			   else
 			   {
@@ -1670,7 +1659,9 @@ bool burnEEPROM()
 		//do nothing
 	}
 	
-	if((burnStat & 0x04) == 0x04){burnSuccess = true;} // check if EE_PGRM_OK bit is '1'
+	if((burnStat & 0x04) == 0x04){
+	burnSuccess = true;
+	} // check if EE_PGRM_OK bit is '1'
 	
 	return burnSuccess;
 }

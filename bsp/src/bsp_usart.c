@@ -71,7 +71,7 @@ void BSP_UsartInit(uint32_t bound){
 	GPIO_Init(USART_PORT, &GPIO_InitStructure);    
 
 	GPIO_InitStructure.GPIO_Pin = USART_RX;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;	//上拉输入
 	GPIO_Init(USART_PORT, &GPIO_InitStructure);   //初始化GPIOA
 
 	USART_InitStructure.USART_BaudRate = 115200;				//波特率设置：115200
@@ -128,10 +128,10 @@ void BSP_Usart2Init(int baud){//PA2 PA3
 	GPIO_Init(GPIOA, &GPIO_InitStructure);    
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;	//上拉输入
 	GPIO_Init(GPIOA, &GPIO_InitStructure);   //初始化GPIOA
 
-	USART_InitStructure.USART_BaudRate = 19200;				//波特率设置：19200
+	USART_InitStructure.USART_BaudRate = baud;				//波特率设置：19200  2400 115200
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;	//数据位数设置：8位
 	USART_InitStructure.USART_StopBits = USART_StopBits_2; 		//停止位设置：2位
 	USART_InitStructure.USART_Parity = USART_Parity_No ;  		//是否奇偶校验：无
@@ -151,13 +151,16 @@ void BSP_Usart2Init(int baud){//PA2 PA3
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;				//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);
 }
+
 void USART2_IRQHandler(void)                					
 {	
 	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)  
   {
+		
 	  unsigned short tempRx_Head = (Rx_Head+1)%UsartRxBuffSize;
 		unsigned short tempRx_Tail = Rx_Tail;
 		uint8_t data = USART_ReceiveData(USART2);			//读取数据 注意：这句必须要，否则不能够清除中断标志位
+
 		if(tempRx_Head == tempRx_Tail)		
 		{
 			USART_ITConfig(USART2, USART_IT_RXNE, DISABLE); //接受缓存满了，停止接收数据

@@ -96,7 +96,7 @@ void IWDG_Init(u8 prer,u16 rlr)
 }
 
 RCC_ClocksTypeDef rcc;
-uint8_t regaddrread = 0x02,regaddrwr = 0x02;
+uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
 int main(void)
 {
 	int Cnt;
@@ -111,7 +111,7 @@ int main(void)
 	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
 	//MCO(NONE);                  // Debug system clock, use it only when you want to check clock
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
-//	BSP_EncoderInit();						
+	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
 	InitPGA460();
 	
@@ -139,24 +139,26 @@ int main(void)
 			Cnt = Cnt%10;
 			if((Cnt>5)&&(Cnt<10))
 			{
+//				registerRead(0x1f);
 				GPIO_SetBits(GPIOB,GPIO_Pin_13);
 			
 			}else if(Cnt<5){
 //				GPIO_ResetBits(GPIOB,GPIO_Pin_13);
-			GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 );	 
+				GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 );	 
 			
 		  }
 		}
-					//Ultrasonic Routine
+//					//Ultrasonic Routine
 		ultrasonicCmd(0,1);// run preset 1 (short distance) burst+listen for 1 object
 		
 		pullUltrasonicMeasResult(false);      // Pull Ultrasonic Measurement Result
 		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 		TempWidth = ultraMeasResult[3];
+		objDist = (TempDis/2*0.000001*speedSound) - digitalDelay;
+		objWidth= TempWidth * 16;
 		if((objDist>0.15)&(objDist<11.2))
 		{
 			objectDetected = true;
-		
 		}
 		
 //		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
@@ -176,10 +178,9 @@ int main(void)
 //			}
 //		}
 		
-		objDist = (TempDis/2*0.000001*speedSound) - digitalDelay;
-		objWidth= TempWidth * 16;
-		registerWrite(regaddrwr,0x04);
-		registerRead(regaddrread);
+//		objDist = (TempDis/2*0.000001*speedSound) - digitalDelay;
+//		objWidth= TempWidth * 16;
+		
 	}
 }
 
