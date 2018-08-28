@@ -35,7 +35,7 @@
 #define  CAN_ID_BMS_CMD				(0x01F1)
 #define  CAN_ID_LLC_CMD             (0x0380)
 #define  CAN_ID_LLC_DATA            (0x0780)
-
+#define  CAN_ID_BUMPER              (0x0438)
 
 #define SAS_ZERO					(-153)
 
@@ -267,5 +267,11 @@ void BSP_CanSendBmsHeart()
 	BSP_CanSend(CAN_ID_BMS_CMD, CAN_BMS_BRAKE, 8);
 }
 
+void BSP_CanSendBumper(uint8_t Carsh)//0x01表示安全没有碰撞，0x02表示有碰撞
+{
+	uint8_t CrashData[8]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	CrashData[0] = Carsh;
+	BSP_CanSend(CAN_ID_BUMPER, CrashData, 8);
+}
 
 /************************ (C) COPYRIGHT LIAO Qinghai *****END OF FILE****/

@@ -28,10 +28,11 @@ const uint8_t kEncoderFrequency = 20;
 uint16_t gHeartbeatCnt = 0;
 //uint16_t IOITDelayCnt = 0;
 const uint16_t kHeartbeatMax = 9;
-
-double objDist[8] ,objWidth[8] ;
+short BumperCnt;
+byte BumperState,OneTimeSend;
+double objDist[8] ,objWidth[8],TempDis2,TempWidth2 ;
 uint16_t TempDis=0,TempWidth=0;
-byte objectDetected = false;
+byte objectDetected[8] = {false,false,false,false,false,false,false,false};
 
 unsigned char UltrSendflag = 0x00;
 unsigned short BumperIO;
@@ -149,44 +150,53 @@ int main(void)
 			
 		  }
 		}
-//					//Ultrasonic Routine
+					//Ultrasonic Routine
 		
 		ultrasonicCmd(0,1,uartAddrUpdate);// run preset 1 (short distance) burst+listen for 1 object
 		
 		pullUltrasonicMeasResult(false,uartAddrUpdate);      // Pull Ultrasonic Measurement Result
 		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 		TempWidth = ultraMeasResult[3];
-		objDist[uartAddrUpdate] = (TempDis/2*0.000001*speedSound) - digitalDelay;
-		objWidth[uartAddrUpdate] = TempWidth * 16;
-		if((objDist[uartAddrUpdate]>0.15)&(objDist[uartAddrUpdate]<1.2))
+		TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
+		TempWidth2 = TempWidth * 16;
+		if((TempDis2>0.15)&(TempDis2<1.2))
 		{
-			objectDetected = true;
+			objectDetected[uartAddrUpdate] = true;
 		}
 		
-		if(objectDetected == false) //如果短距离检测失败则开启长距离检测程序
+		if(objectDetected[uartAddrUpdate] == false) //如果短距离检测失败则开启长距离检测程序
 		{
 			ultrasonicCmd(1,1,uartAddrUpdate);
 			pullUltrasonicMeasResult(false,uartAddrUpdate);
 			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 			TempWidth = ultraMeasResult[3];
-			if((objDist[uartAddrUpdate]<11.2)&&(objDist[uartAddrUpdate]>0))
+			TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
+			TempWidth2= TempWidth * 16;
+			
+			if((TempDis2<11.2)&&(TempDis2>0))
 			{
-				objectDetected = true;
+				objectDetected[uartAddrUpdate] = true;
 				
-			}else if(objDist == 0)
+			}else if(TempDis2 == 0)
 			{
 			}else{
 				printf("No object!!!\n");
 			}
 		}
-		objectDetected =false;
 		
-		objDist[uartAddrUpdate] = (TempDis/2*0.000001*speedSound) - digitalDelay;
-		objWidth[uartAddrUpdate]= TempWidth * 16;
+		if(objectDetected[uartAddrUpdate] == false)
+		{
+			objDist[uartAddrUpdate] = 0;
+			objWidth[uartAddrUpdate] = 0;
+			printf("no project or ultrasonic error\n");
+		}else{
+			objDist[uartAddrUpdate] = TempDis2;
+			objWidth[uartAddrUpdate] = TempWidth2;
+		}
 		uartAddrUpdate ++;
-		 uartAddrUpdate =uartAddrUpdate%2;
-		 if(uartAddrUpdate>7) uartAddrUpdate = 7;
-		 else if(uartAddrUpdate<0) uartAddrUpdate = 0;
+	  uartAddrUpdate =uartAddrUpdate%UltraDevNum;
+	  uartAddrUpdate = LIMIT_MAX_MIN(uartAddrUpdate,7,0);
+		objectDetected[uartAddrUpdate] =false;
 	}
 }
 
@@ -196,7 +206,33 @@ void SysTick_Handler()
 
 	// time counter
 	Millis++;
+	
+		//bumper 
 	BumperIO = GPIO_ReadInputData(GPIOC)&0x0008;
+	if(BumperIO == 0x0000)
+	{
+		BumperCnt++;
+	}else {
+		BumperState = 0x00;
+		BumperCnt = 0;
+	}
+	if(BumperCnt>20)
+	{
+		BumperCnt = 0;
+		BumperState = 0x01;
+	}
+	
+	if((Millis%100) == 0)
+	{
+		OneTimeSend = 0x01;
+		if(BumperState == 0x00)
+			BSP_CanSendBumper(BUMPER_NO_CRASH);
+	}
+	if((BumperState == 0x01)&&(OneTimeSend == 0x01))
+	{
+		OneTimeSend = 0x00;
+		BSP_CanSendBumper(BUMPER_CRASH);
+	}
 
 }
 
