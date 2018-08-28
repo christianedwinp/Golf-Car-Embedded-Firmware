@@ -2,228 +2,37 @@
 #include "pin_configuration.h"
 #include "bsp_time.h"
 #include <stdio.h>
-
-uint32_t start1,finish1, delta1, start2,finish2, delta2;
-int rising1 = 1,rising2 = 1, transmitFlag1 = 0, transmitFlag2 = 0;
-
-void BSP_UltrasonicInit(){
-	initMux();
-	switchOnMux(3);
-	initEcho1();	
-	initEcho2();	
-	initTrig();
-	initVoltageCompare();
-}
-
-void initMux(){
-	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(MUXCLK, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = MUX1_ENABLE | MUX1_CHANNEL_SELECT_A | MUX1_CHANNEL_SELECT_B | MUX2_ENABLE | MUX2_CHANNEL_SELECT_A | MUX2_CHANNEL_SELECT_B  ; 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(MUXPORT, &GPIO_InitStructure);
-}
-
-void selectChannel_Mux1(int channel){
-	switch(channel){
-		case 1:
-			MUXPORT->BRR = MUX1_CHANNEL_SELECT_A;
-			MUXPORT->BRR = MUX1_CHANNEL_SELECT_B;			
-			break;
-		case 2:
-			MUXPORT->BSRR = MUX1_CHANNEL_SELECT_A;
-			MUXPORT->BRR = MUX1_CHANNEL_SELECT_B;
-			break;
-		case 3:
-			MUXPORT->BRR = MUX1_CHANNEL_SELECT_A;
-			MUXPORT->BSRR 	= MUX1_CHANNEL_SELECT_B;
-			break;
-		case 4:
-			MUXPORT->BSRR = MUX1_CHANNEL_SELECT_A;
-			MUXPORT->BSRR	= MUX1_CHANNEL_SELECT_B;
-			break;
-		default:
-			printf("Channel number outbound, only input 1/2/3/4   \r 		\n");
-	}
-}
-
-void selectChannel_Mux2(int channel){
-	switch(channel){
-		case 1:
-			MUXPORT->BRR = MUX2_CHANNEL_SELECT_A;
-			MUXPORT->BRR = MUX2_CHANNEL_SELECT_B;			
-			break;
-		case 2:
-			MUXPORT->BSRR = MUX2_CHANNEL_SELECT_A;
-			MUXPORT->BRR = MUX2_CHANNEL_SELECT_B;
-			break;
-		case 3:
-			MUXPORT->BRR = MUX2_CHANNEL_SELECT_A;
-			MUXPORT->BSRR 	= MUX2_CHANNEL_SELECT_B;
-			break;
-		case 4:
-			MUXPORT->BSRR = MUX2_CHANNEL_SELECT_A;
-			MUXPORT->BSRR	= MUX2_CHANNEL_SELECT_B;
-			break;
-		default:
-			printf("Channel number outbound, only input 1/2/3/4   \r 		\n");
-	}
-}
-
-void switchOffMux(int mux){
-	switch(mux){
-		case 1:
-		MUXPORT->BSRR  = MUX1_ENABLE;		
-		break;
-		case 2:
-		MUXPORT->BSRR  = MUX2_ENABLE;
-		break;
-		case 3:
-		MUXPORT->BSRR  = MUX1_ENABLE;	
-		MUXPORT->BSRR  = MUX2_ENABLE;
-		break;
-		default:
-		printf("Multiplexer number outbound, only input 1/2/3   \r 		\n");
-	}
-}
-void switchOnMux(int mux){
-	switch(mux){
-		case 1:
-		MUXPORT->BRR  = MUX1_ENABLE;		
-		break;
-		case 2:
-		MUXPORT->BRR  = MUX2_ENABLE;
-		break;
-		case 3:
-		MUXPORT->BRR  = MUX1_ENABLE;	
-		MUXPORT->BRR  = MUX2_ENABLE;
-		break;
-		default:
-		printf("Multiplexer number outbound, only input 1/2/3   \r 		\n");
-	}
-}
-
-void initTrig(){
-	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(ULTRASONIC_TRIGCLK, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = ULTRASONIC_TRIG; 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(ULTRASONIC_TRIGPORT, &GPIO_InitStructure);
-}
-
-void initEcho1(){
+#include "PGA460_USSC.h"
+void InitPGA460() //发射驱动信号之后2ms左右之后就基本得到了echo信号
+	                //我们的驱动信号是40Khz，看官方的仿真资料，发射14个pulse得到的echo信号有比较大的echo信号
+{
+	double result;
+	short i;
+	byte uartAddress = 0x00;
+	initSTM32F1PGA460(0,19200);//初始化使用uart通信，baud=115200，串口地址为0，<0-7>,
+																//这个串口地址是PGA的地址，记录在它的EEPROM中。
+																//在这个函数中读取了这个PGA的地址并设置了这个PGA的UART的地址为我们所需要的地址
+//	#if  SetUltraAddress
+//		SetPGAAddress(0x00);   //set Device address   , wehn you initallize the address ,this function should be commented 
+//	#endif
 	
-	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(ULTRASONIC_ECHOCLK, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = ULTRASONIC_ECHO1; 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_Init(ULTRASONIC_ECHOPORT, &GPIO_InitStructure);
+	for(i = 0; i<UltraDevNum;i++)  
+	{
+		initThresholds(1,i);//50% 的阈值，对应数据手册18页的Threshold Data Assignment,这个是
+										//经过转换后数字信号的比较阈值
+		defaultPGA460(2,uartAddress); //设置寄存器的前42个的默认参数
+		initTVG(2,1,i);  //设置模拟前端的时变增益，用来提高信噪比
+    
+//	registerWrite(0x4b,0x80);
+		result = runDiagnostics(1,0,i);
+		printf("frequency: %f Khz\n",result);
+			result = runDiagnostics(0,1,i);
+		printf("decay preiod: %f us\n",result);
+			delay_ms(50);
+		byte burnStat = burnEEPROM(i);
+			if(burnStat == true){printf("EEPROM programmed successfully.");}
+		else{printf("EEPROM program failed.");}
 		
-	EXTI_InitTypeDef EXTI_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-	
-	GPIO_EXTILineConfig(ULTRASONIC_ECHOCLK, ULTRASONIC_ECHO1);
-	EXTI_InitStructure.EXTI_Line = EXTI_Line1;
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
-	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
-
-void EXTI1_IRQHandler(){
-	if (EXTI_GetITStatus(EXTI_Line1) != RESET && transmitFlag1 != 0) {
-		if(rising1){
-			//RISING
-			start1 = micros();
-			rising1-=1;
-			transmitFlag1+=1;
-		}else{
-			//FALLING
-			delta1 = micros()-start1;
-			printf("DT1:%u \n", delta1);
-			rising1+=1;
-		}
-		transmitFlag1--;
-		EXTI_ClearITPendingBit(EXTI_Line1); 
-	}	
-}
-
-
-
-
-void initEcho2(){
-	
-	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(ULTRASONIC_ECHOCLK, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = ULTRASONIC_ECHO2; 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_Init(ULTRASONIC_ECHOPORT, &GPIO_InitStructure);
-		
-	EXTI_InitTypeDef EXTI_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-	
-	GPIO_EXTILineConfig(ULTRASONIC_ECHOCLK, ULTRASONIC_ECHO2);
-	EXTI_InitStructure.EXTI_Line = EXTI_Line2;
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
-	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI2_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
-
-void EXTI2_IRQHandler(){
-	if (EXTI_GetITStatus(EXTI_Line2) != RESET && transmitFlag2 != 0) {
-		if(rising2){
-			//RISING
-			start2 = micros();
-			rising2-=1;
-			transmitFlag2+=1;
-		}else{
-			//FALLING
-			delta2 = micros()-start2;
-			printf("DT2:%u \n", delta2);
-			rising2+=1;
-		}
-		transmitFlag2--;
-	}	
-	EXTI_ClearITPendingBit(EXTI_Line2); 
-}
-
-void initVoltageCompare(){
-	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(ULTRASONIC_VCOMPARECLK, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = ULTRASONIC_VCOMPARE1 | ULTRASONIC_VCOMPARE2; 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_Init(ULTRASONIC_VCOMPAREPORT, &GPIO_InitStructure);
-	
-	DAC_InitTypeDef  DAC_InitStructure;
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
-	DAC_InitStructure.DAC_Trigger = DAC_Trigger_None;
-  DAC_InitStructure.DAC_WaveGeneration = DAC_WaveGeneration_None;
-  DAC_InitStructure.DAC_LFSRUnmask_TriangleAmplitude = DAC_LFSRUnmask_Bit0;
-  DAC_InitStructure.DAC_OutputBuffer = DAC_OutputBuffer_Disable;
-  DAC_Init(DAC_Channel_1, &DAC_InitStructure);
-	DAC_Cmd(DAC_Channel_1, ENABLE);
-	DAC_Init(DAC_Channel_2, &DAC_InitStructure);
-	DAC_Cmd(DAC_Channel_2, ENABLE);
-	
-	DAC_SetChannel1Data(DAC_Align_12b_R, voltageCompare1_Threshold);//max number 4095 ~> Vref i.e 3.3V
-	DAC_SetChannel2Data(DAC_Align_12b_R, voltageCompare2_Threshold);
+		uartAddress = uartAddress +0x01;
+	}
 }

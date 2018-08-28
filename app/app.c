@@ -9,29 +9,33 @@
 #include "bsp_ultrasonic.h"
 #include "bsp_time.h"
 #include "pin_configuration.h"
-
+#include "PGA460_USSC.h"
 #include <math.h>
 
 enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
 
 extern uint32_t start1,finish1, delta1, start2,finish2, delta2;
+extern uint32_t transmittime;
+extern volatile u32 Millis;
 extern int rising1,rising2, transmitFlag1, transmitFlag2;
-
+extern short PWMPeriodCnt;
+extern unsigned char ReceiveIO;
+extern uint16_t kControllerDeadzoneLow;
+extern uint16_t kControllerDeadzoneLowLow;
+extern uint16_t kControllerDeadzone;
+extern 	byte ultraMeasResult[34+3]; 
 const uint8_t kEncoderFrequency = 20;
-float kControllerP = 1.5;
-float kControllerI = 0.3;
-float kControllerD = 0;
-uint16_t kControlSpeedMax = 1500;
-uint16_t kControllerDeadzoneHigh = 20;
-uint16_t kControllerDeadzoneLow = 15;
-uint16_t kControllerDeadzoneLowLow = 5;
-uint16_t kControllerDeadzone = 10;
-float kControllerDeadzoneHighRatioR = 0.07;
-float kControllerDeadzoneHighRatioL = 0.04;
-
-const uint16_t kHeartbeatMax = 9;
 uint16_t gHeartbeatCnt = 0;
-static uint16_t velocity_flag = 0;
+//uint16_t IOITDelayCnt = 0;
+const uint16_t kHeartbeatMax = 9;
+short BumperCnt;
+byte BumperState,OneTimeSend;
+double objDist[8] ,objWidth[8],TempDis2,TempWidth2 ;
+uint16_t TempDis=0,TempWidth=0;
+byte objectDetected[8] = {false,false,false,false,false,false,false,false};
+
+unsigned char UltrSendflag = 0x00;
+unsigned short BumperIO;
 
 /*  ONLY FOR DEBUG
 *   This func is used to configure MCO which can help debug clock
@@ -92,67 +96,39 @@ void IWDG_Init(u8 prer,u16 rlr)
 	IWDG_Enable();  //Ê¹ÄÜIWDG	
 }
 
-/** @brief steering Controller
- *
- * @param target
- * @param current
- * @param velocity
- */
-void steeringController(int16_t target, int16_t current, int16_t velocity)
-{
-	float error = target - current;
-	int16_t speed = 0;
-	
-	if( error > kControllerDeadzone || error < -kControllerDeadzone )
-	{
-		speed = error*kControllerP;
-		velocity_flag++;
-	}
-	else
-	{
-		kControllerDeadzone = kControllerDeadzoneHigh;
-		if(target < -100)
-		{
-			kControllerDeadzone += fabs(target*kControllerDeadzoneHighRatioR);
-		}
-		else if(target > 100)
-		{
-			kControllerDeadzone += fabs(target*kControllerDeadzoneHighRatioL);
-		}
-	}
-	
-	if(speed > kControlSpeedMax)
-	{
-		speed = kControlSpeedMax;
-	}
-	else if(speed < -kControlSpeedMax)
-	{
-		speed = -kControlSpeedMax;
-	}
-	
-	
-	BSP_EpsSet(speed);
-}
-
+RCC_ClocksTypeDef rcc;
+uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
+short IntervelCnt[2];
 int main(void)
 {
-	uint8_t led3 = 0;
-	int16_t last_angle_target = 0;
-	
+	int Cnt;
+	short uartAddrUpdate = 0;
+	int speedSound = 343; // 343 degC at room temperature
+	double digitalDelay = 0.00005*343;
+	RCC_GetClocksFreq(&rcc);
 	Systick_Init();
 	BSP_Init();
 	BSP_DelayInit();	         		// Init delpy parameters
 	BSP_LEDTestInit();       	    // Init LED on board to control rely	
+	BSP_BumperIO();
+	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
 	//MCO(NONE);                  // Debug system clock, use it only when you want to check clock
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
 	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
-	//BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
-	BSP_UltrasonicInit();				
+	InitPGA460();
 	
+<<<<<<< HEAD
 //delay_ms(500);
 	BSP_TimerInit(kEncoderFrequency);
 	
+=======
+			
+	delay_ms(500);
+//	
+	BSP_TimerInit(kEncoderFrequency);
+//	BSP_Timer6PWM();
+>>>>>>> 22a6036e6d1cac7ade49591b56d0063bf6fd7d34
 //	IWDG_Init(4, 120);	// 192ms
 //	IWDG_ReloadCounter();
 	
@@ -160,93 +136,126 @@ int main(void)
 	BSP_EncoderRead();
 	BSP_EncoderRead();
 	BSP_EncoderRead();
-	
 	printf("all initialized  \n");
 	
 	while (1)
 	{
 		//update by timer
-		if (gTimerFlag)
+		if(gTimerFlag == 1)
 		{
-			gTimerFlag = 0;
-			BSP_EncoderRead();
-			BSP_CanSendEncoder(gEncoder);
+			gTimerFlag = 0 ;
+			Cnt++;
+			Cnt = Cnt%10;
+			if((Cnt>5)&&(Cnt<10))
+			{
+				registerRead(0x1f,0);
+				GPIO_SetBits(GPIOB,GPIO_Pin_13);
 			
-			if(gCanMsg.bms_heart)
-			{
-				BSP_CanSendBmsHeart();
-			}
-			else
-			{
-				gHeartbeatCnt++;
-			}
-			IWDG_ReloadCounter();
+			}else if(Cnt<5){
+//				GPIO_ResetBits(GPIOB,GPIO_Pin_13);
+				GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 );	 
 			
-			// indicate status
-			led3++;
-			if(led3 >= 10)
-			{
-				LED3_Toggle
-				led3 = 0;
-			}
+		  }
+		}
+					//Ultrasonic Routine
+		IntervelCnt[0] = IntervelCnt[1];
+		IntervelCnt[1] = 0;
+		ultrasonicCmd(0,1,uartAddrUpdate);// run preset 1 (short distance) burst+listen for 1 object
+//		ultrasonicCmd(0,1,uartAddrUpdate+4);
+		delay_ms(20);//this delay important, it use as interval between pulse burst
+		pullUltrasonicMeasResult(false,uartAddrUpdate);      // Pull Ultrasonic Measurement Result
+		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+		TempWidth = ultraMeasResult[3];
+		TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
+		TempWidth2 = TempWidth * 16;
+		if((TempDis2>0.15)&(TempDis2<1.2))
+		{
+			objectDetected[uartAddrUpdate] = true;
 		}
 		
-		// timeout send heartbeat to keep alive
-		if(gHeartbeatCnt > kHeartbeatMax)
+		if(objectDetected[uartAddrUpdate] == false) //如果短距离检测失败则开启长距离检测程序
 		{
-			gCanMsg.bms_heart = 1;
-			gHeartbeatCnt = 0;
-			BSP_CanSendBmsHeart();
-		}
+			ultrasonicCmd(1,1,uartAddrUpdate);
+//			ultrasonicCmd(1,1,uartAddrUpdate+4);
+			//this delay important, it use as interval between pulse burst
+			delay_ms(35); // maximum record length is 65ms, so delay with margin
+			pullUltrasonicMeasResult(false,uartAddrUpdate);
+			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+			TempWidth = ultraMeasResult[3];
+			TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
+			TempWidth2= TempWidth * 16;
+
+			if((TempDis2<11.2)&&(TempDis2>0))
+			{
+				objectDetected[uartAddrUpdate] = true;
 				
-		if (gCanMsg.is_auto && gCanMsg.status )
-		{
-			if((gCanMsg.status & BSP_CAN_UPDATE_COMMAND ) && fabs(gCanMsg.cmd_targetAngle-last_angle_target) > 3)
+			}else if(TempDis2 == 0)
 			{
-				// small angle -> small deadzone
-				if(fabs(gCanMsg.cmd_targetAngle) < 50)
-				{
-					kControllerDeadzone = kControllerDeadzoneLowLow;
-				}
-				else
-				{
-					kControllerDeadzone = kControllerDeadzoneLow;
-				}
+			}else{
+				printf("No object!!!\n");
 			}
-			last_angle_target = gCanMsg.cmd_targetAngle;
-			steeringController(gCanMsg.cmd_targetAngle, gCanMsg.sas_angle,
-			                   gCanMsg.sas_angleVelocity);
-			gCanMsg.status = 0;
 		}
 		
-		
-	
-	
-		//Ultrasonic Routine
-		for(int j=1; j<5; j++){
-			selectChannel_Mux1(j); 
-			selectChannel_Mux2(j); 
-			ULTRASONIC_TRIGPORT->BRR  = ULTRASONIC_TRIG;
-			delay_us(5);
-			for(int x=0; x <8; x++){
-				ULTRASONIC_TRIGPORT->BSRR=ULTRASONIC_TRIG;
-				delay_us(10);
-				ULTRASONIC_TRIGPORT->BRR=ULTRASONIC_TRIG;
-				delay_us(10);
-			}
-			printf("ultrasonic sent  \n");
-			delay_us(100);
-			if(transmitFlag1 == 0){
-				transmitFlag1+=1;
-			}
-			if(transmitFlag2 == 0){
-				transmitFlag2+=1;
-			}
-			delay_ms(34);
-			printf("Timestamp : %u  \n", micros());
+		if(objectDetected[uartAddrUpdate] == false)//just value final output objDist and objWigth once when short distance detect fail.
+		{
+			printf("no project or ultrasonic error\n");
+		}else{
+			objDist[uartAddrUpdate] = TempDis2;
+			objWidth[uartAddrUpdate] = TempWidth2;
 		}
+		
+		uartAddrUpdate ++;
+	  uartAddrUpdate =uartAddrUpdate%UltraDevNum;
+	  uartAddrUpdate = LIMIT_MAX_MIN(uartAddrUpdate,7,0);
+		objectDetected[uartAddrUpdate] =false;
+	}
+}
+
+
+void SysTick_Handler()
+{
+
+	// time counter
+	Millis++;
+	IntervelCnt[1]++;
+		//bumper 
+	BumperIO = GPIO_ReadInputData(GPIOC)&0x0008;
+	if(BumperIO == 0x0000)
+	{
+		BumperCnt++;
+	}else {
+		BumperState = 0x00;
+		BumperCnt = 0;
+	}
+	if(BumperCnt>20)
+	{
+		BumperCnt = 0;
+		BumperState = 0x01;
 	}
 	
+	if((Millis%100) == 0)
+	{
+		OneTimeSend = 0x01;
+		if(BumperState == 0x00)
+			BSP_CanSendBumper(BUMPER_NO_CRASH);
+	}
+	if((BumperState == 0x01)&&(OneTimeSend == 0x01))
+	{
+		OneTimeSend = 0x00;
+		BSP_CanSendBumper(BUMPER_CRASH);
+	}
 
-	return 0;
 }
+
+void TIM6_IRQHandler()
+{
+
+	if(TIM_GetITStatus(TIM6,TIM_IT_Update) == SET ) 
+	{
+	
+
+	  }//-11.2us
+		TIM_ClearITPendingBit(TIM6,TIM_IT_Update); 
+		TIM_ClearFlag(TIM6,TIM_FLAG_Update);
+}
+

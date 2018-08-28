@@ -49,7 +49,7 @@
 
 
 void BSP_LEDTestInit(void);
-
+void BSP_BumperIO(void);
 #ifdef __cplusplus
 }
 #endif

@@ -7,5 +7,5 @@
 extern volatile uint8_t gTimerFlag;
 
 void BSP_TimerInit(uint16_t freq);
-
+void BSP_Timer6PWM(void);
 #endif

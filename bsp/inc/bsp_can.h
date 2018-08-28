@@ -55,14 +55,15 @@ extern volatile BSP_CanMsg gCanMsg;
 /* Exported macro ------------------------------------------------------------*/
 #define BSP_CAN_UPDATE_COMMAND			(0x01)
 #define BSP_CAN_UPDATE_STEERING			(0x02)
-
+#define BUMPER_CRASH                (0x02)
+#define BUMPER_NO_CRASH							(0x01)
 	 
 /* Exported functions --------------------------------------------------------*/  
 void BSP_CanInit(uint32_t baud);
 uint8_t BSP_CanSend(uint32_t id, uint8_t* msg,uint8_t len);	 
 void BSP_CanSendEncoder(int16_t* data);
 void BSP_CanSendBmsHeart(void);
-
+void BSP_CanSendBumper(uint8_t Carsh);
 #ifdef __cplusplus
 }
 #endif

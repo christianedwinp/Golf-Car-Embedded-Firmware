@@ -11,7 +11,6 @@
                         ##### How to use this driver #####
  ===============================================================================
  
-
 @endverbatim
            
   ******************************************************************************
@@ -32,7 +31,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "bsp.h"
-
+#include "stdio.h"	
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
@@ -41,7 +40,7 @@ void BSP_EpsInit	(void);
 void BSP_EpsRelease	(void);
 void BSP_EpsSet		(int16_t value);	
 void BSP_EpsSendCmd	(const uint8_t* ptr, uint16_t len);	 
-	 
+void steeringController(int16_t target, int16_t current, int16_t velocity);
 #ifdef __cplusplus
 }
 #endif

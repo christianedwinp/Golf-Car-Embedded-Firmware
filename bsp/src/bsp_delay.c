@@ -3,8 +3,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////// 
 
-static uint8_t  fac_us=0;							//us延时倍乘数			   
-static uint16_t fac_ms=0;							//ms延时倍乘数,在os下,代表每个节拍的ms数
+uint32_t  fac_us=0;							//us延时倍乘数			   
+uint32_t fac_ms=0;							//ms延时倍乘数,在os下,代表每个节拍的ms数
 			   
 //Initialize the delay function
 //This function initializes the clock beat of the OS when using the OS.
@@ -14,7 +14,11 @@ void BSP_DelayInit(void)
 {	
  	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
 	fac_us=72000000/8000000;						//represents the number of systick clocks required for each uS
+<<<<<<< HEAD
 	fac_ms=(uint16_t)fac_us*1000;							//represents the number of systick clocks required for each mS
+=======
+	fac_ms=fac_us*1000;							//represents the number of systick clocks required for each mS
+>>>>>>> 22a6036e6d1cac7ade49591b56d0063bf6fd7d34
 }								    
 
 

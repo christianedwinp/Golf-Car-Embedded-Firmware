@@ -16,31 +16,38 @@ void Systick_Init(void)
 	Millis = 0;//reset Millis
 }
 
-void SysTick_Handler()
-{
-	Millis++;
-}
+
 
 uint32_t millis()
 {
 	return Millis;
 }
 
+long msdelay;
 uint32_t micros()
 {
+	
 	return Millis*1000 + 1000 - SysTick -> VAL/72;
 }
 
 void delay_ms(u32 nTime)
 {
 	u32 curTime = Millis;
-	while((nTime-(Millis-curTime)) > 0);
+	msdelay =10;
+	while( msdelay > 0)
+	{
+		msdelay = (nTime-(Millis-curTime));
+	}
 }
-
+long usdelay=10;
 void delay_us(u32 nTime)
 {
-	u32 curTime = micros();
-	while((nTime-(micros()-curTime)) > 0);
+	long curTime = micros();
+	usdelay=10;
+	while(usdelay > 0)
+	{
+		usdelay = 	nTime-(micros()-curTime);
+	}
 }
 
 

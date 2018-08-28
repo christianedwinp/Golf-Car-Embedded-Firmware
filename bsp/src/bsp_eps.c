@@ -31,6 +31,7 @@
 #include "bsp_delay.h"
 #include "bsp_time.h"
 #include "pin_configuration.h"
+#include "math.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -46,7 +47,7 @@ static const uint16_t kEpsSpeedMax = 2000;
 	uint16_t kEpsBias = 300;
 static const uint8_t kEpsBufferSize = 64;
 static uint8_t gEpsBufferHead = 0;
-static uint8_t gEpsBuffer [kEpsBufferSize];
+//static uint8_t gEpsBuffer [kEpsBufferSize];
 
 static const uint8_t kEpsCmdReleaseSize = 8;
 static const uint8_t kEpsCmdRelease[kEpsCmdReleaseSize]={0x01,0x06,0x00,0x44,0x00,0x01,0x08, 0x1F};
@@ -95,10 +96,27 @@ static const uint8_t auchCRCLo[] =  {
 0x40  
 };
 
+static uint16_t velocity_flag = 0;
+uint16_t kControlSpeedMax = 1500;
+uint16_t kControllerDeadzoneHigh = 20;
+uint16_t kControllerDeadzoneLow = 15;
+uint16_t kControllerDeadzoneLowLow = 5;
+uint16_t kControllerDeadzone = 10;
+float kControllerP = 1.5;
+float kControllerI = 0.3;
+float kControllerD = 0;
+float kControllerDeadzoneHighRatioR = 0.07;
+float kControllerDeadzoneHighRatioL = 0.04;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-  
+  //???fputc?? 
+int fputc(int ch, FILE *f)
+{ 	
+	while((USART1->SR&0X40)==0);//????,??????   
+	USART1->DR = (uint8_t) ch;      
+	return ch;
+}
   
 uint16_t ModbusRtuCRC16(uint8_t *updata, uint16_t len)  
 {  
@@ -122,48 +140,38 @@ uint16_t ModbusRtuCRC16(uint8_t *updata, uint16_t len)
   */
 void BSP_EpsInit(void)
 {
-	GPIO_InitTypeDef  	GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
+//	NVIC_InitTypeDef NVIC_InitStructure;
 	
-	RCC_APB2PeriphClockCmd(RS485_CLK, ENABLE);
-	RCC_APB2PeriphClockCmd( RS485_CLK, ENABLE); 	 
-	RCC_APB1PeriphClockCmd(RS485_USART_CLK, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC|RCC_APB2Periph_AFIO, ENABLE); 
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3,ENABLE);
+	GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);//?????
 
-	GPIO_InitStructure.GPIO_Pin =  RS485_RE_DE;	
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-	GPIO_Init(RS485_PORT, &GPIO_InitStructure); 	
 
 	
-	GPIO_InitStructure.GPIO_Pin = RS485_TX;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; 		//复用推挽输出
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //??????
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(RS485_PORT, &GPIO_InitStructure);    
+	GPIO_Init(GPIOC, &GPIO_InitStructure);    
 
-	GPIO_InitStructure.GPIO_Pin = RS485_RX;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
-	GPIO_Init(RS485_PORT, &GPIO_InitStructure);   
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//????
+	GPIO_Init(GPIOC, &GPIO_InitStructure);   //???GPIOA
 
-
-	USART_InitStructure.USART_BaudRate = 115200;				//波特率设置：9600
-	USART_InitStructure.USART_WordLength = USART_WordLength_9b;	//数据位数设置：8位
-	USART_InitStructure.USART_StopBits = USART_StopBits_1; 		//停止位设置：1位
-	USART_InitStructure.USART_Parity = USART_Parity_Even ;  	//是否奇偶校验：无
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//硬件流控制模式设置：没有使能
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;			//接收与发送都使能
-	USART_Init(RS485_USART, &USART_InitStructure);  								//初始化USART3
+	USART_InitStructure.USART_BaudRate = 115200;				//?????:115200
+	USART_InitStructure.USART_WordLength = USART_WordLength_9b;	//??????:8?
+	USART_InitStructure.USART_StopBits = USART_StopBits_1; 		//?????:1?
+	USART_InitStructure.USART_Parity = USART_Parity_Even ;  		//??????:?
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//?????????:????
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;					//????????
 	
-    /*使能串口3的发送和接收中断*/
-    USART_ITConfig(RS485_USART, USART_IT_RXNE, ENABLE);
-	USART_Cmd(RS485_USART, ENABLE);// USART3使能
+	USART_Init(USART3, &USART_InitStructure);  					//???USART1
 	
-	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn; 
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; 	//先占优先级1级
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3; 			//从优先级3级
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 			//使能外部中断通道
-	NVIC_Init(&NVIC_InitStructure); 	
+	USART_Cmd(USART3, ENABLE);
+
 }
+
 
 void BSP_EpsSendCmd(const uint8_t* ptr, uint16_t len)
 {
@@ -229,10 +237,51 @@ void BSP_EpsRelease(void)
 {
 	BSP_EpsSendCmd(kEpsCmdRelease, kEpsCmdReleaseSize);
 }
+/** @brief steering Controller
+ *
+ * @param target
+ * @param current
+ * @param velocity
+ */
+void steeringController(int16_t target, int16_t current, int16_t velocity)
+{
+	float error = target - current;
+	int16_t speed = 0;
+	
+	
+	if( error > kControllerDeadzone || error < -kControllerDeadzone )
+	{
+		speed = error*kControllerP;
+		velocity_flag++;
+	}
+	else
+	{
+		kControllerDeadzone = kControllerDeadzoneHigh;
+		if(target < -100)
+		{
+			kControllerDeadzone += fabs(target*kControllerDeadzoneHighRatioR);
+		}
+		else if(target > 100)
+		{
+			kControllerDeadzone += fabs(target*kControllerDeadzoneHighRatioL);
+		}
+	}
+	
+	if(speed > kControlSpeedMax)
+	{
+		speed = kControlSpeedMax;
+	}
+	else if(speed < -kControlSpeedMax)
+	{
+		speed = -kControlSpeedMax;
+	}
+		
+	BSP_EpsSet(speed);
+}
 
 void USART3_IRQHandler(void)
 {
-	uint8_t data = 0;
+//	uint8_t data = 0;
  	if(USART_GetITStatus(RS485_USART, USART_IT_RXNE) != RESET && gEpsBufferHead < kEpsBufferSize) 
 	{	 
 		//data = USART_ReceiveData(USART3); 
@@ -244,5 +293,7 @@ void USART3_IRQHandler(void)
 	USART_ClearFlag(RS485_USART, USART_IT_RXNE);
 	
 } 
+
+
 
 /************************ (C) COPYRIGHT LIAO Qinghai *****END OF FILE****/
