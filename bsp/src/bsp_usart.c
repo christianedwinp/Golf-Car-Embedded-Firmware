@@ -131,18 +131,29 @@ void BSP_Usart2Init(int baud){//PA2 PA3
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;	//上拉输入
 	GPIO_Init(GPIOA, &GPIO_InitStructure);   //初始化GPIOA
 
-	USART_InitStructure.USART_BaudRate = baud;				//波特率设置：19200  2400 115200
+	USART_InitStructure.USART_BaudRate = baud;				//波特率设置：19200  2400 115200  one wire Uart maximum band is 19200
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;	//数据位数设置：8位
 	USART_InitStructure.USART_StopBits = USART_StopBits_2; 		//停止位设置：2位
 	USART_InitStructure.USART_Parity = USART_Parity_No ;  		//是否奇偶校验：无
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//硬件流控制模式设置：没有使能
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;					//接收与发送都使能
 	
-	USART_Init(USART2, &USART_InitStructure);  					//初始化USART1
-	
-//	USART_ClearFlag(USART2, USART_FLAG_TC);
-	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);				//开启接受中断	
-	USART_Cmd(USART2, ENABLE);
+	USART_Init(USART2, &USART_InitStructure);  					//初始化USART1 
+
+  USART_LINBreakDetectLengthConfig(USART2, USART_LINBreakDetectLength_11b);
+
+  USART_LINCmd(USART2, ENABLE);
+
+  USART_Cmd(USART2, ENABLE);
+
+ 
+
+  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+
+  USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+
+  USART_ITConfig(USART2, USART_IT_LBD, ENABLE);
+
 
 	//Usart1 NVIC 配置
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;			//串口1中断通道
@@ -156,7 +167,6 @@ void USART2_IRQHandler(void)
 {	
 	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)  
   {
-		
 	  unsigned short tempRx_Head = (Rx_Head+1)%UsartRxBuffSize;
 		unsigned short tempRx_Tail = Rx_Tail;
 		uint8_t data = USART_ReceiveData(USART2);			//读取数据 注意：这句必须要，否则不能够清除中断标志位
@@ -172,6 +182,16 @@ void USART2_IRQHandler(void)
 			
 		USART_ClearITPendingBit(USART2, USART_IT_RXNE);         //清除中断标志
 	} 
+	
+	if(USART_GetITStatus(USART2, USART_IT_LBD))
+  {
+    USART_ClearITPendingBit(USART2, USART_IT_LBD); // 检测到同步间隔场
+  }
+  if(USART_GetFlagStatus(USART2, USART_FLAG_ORE) == SET) // 溢出
+  {
+    USART_ClearFlag(USART2, USART_FLAG_ORE);
+    USART_ReceiveData(USART2);
+  }
 } 
 
 short Usart2_DataAvailable()
@@ -212,6 +232,27 @@ void Usart2Send(unsigned char *Str, int len)
 		delay_us(100);
 	
 	}
+}
+
+void LINSendBreak(void)
+{
+  USART_SendBreak(USART2);
+}
+
+uint8_t LINCalChecksum(uint8_t id, uint8_t *data)
+{
+  uint32_t sum = id;
+  uint8_t i;
+  for(i = 0; i < 8; i++)
+  {
+    sum += data[i];
+    if(sum & 0xFF00)
+    {
+      sum = (sum & 0x00FF) + 1;
+    }
+  }
+  sum ^= 0x00FF;
+  return (uint8_t)sum;
 }
 int read(void){
 	
