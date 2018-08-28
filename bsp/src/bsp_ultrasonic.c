@@ -12,8 +12,11 @@ void InitPGA460() //发射驱动信号之后2ms左右之后就基本得到了echo信号
 	initSTM32F1PGA460(0,19200);//初始化使用uart通信，baud=115200，串口地址为0，<0-7>,
 																//这个串口地址是PGA的地址，记录在它的EEPROM中。
 																//在这个函数中读取了这个PGA的地址并设置了这个PGA的UART的地址为我们所需要的地址
-//	SetPGAAddress(0x00);
-	for(i = 0; i<2;i++)
+//	#if  SetUltraAddress
+//		SetPGAAddress(0x00);   //set Device address   , wehn you initallize the address ,this function should be commented 
+//	#endif
+	
+	for(i = 0; i<UltraDevNum;i++)  
 	{
 		initThresholds(1,i);//50% 的阈值，对应数据手册18页的Threshold Data Assignment,这个是
 										//经过转换后数字信号的比较阈值

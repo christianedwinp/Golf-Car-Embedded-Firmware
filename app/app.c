@@ -98,6 +98,7 @@ void IWDG_Init(u8 prer,u16 rlr)
 
 RCC_ClocksTypeDef rcc;
 uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
+short IntervelCnt[2];
 int main(void)
 {
 	int Cnt;
@@ -151,9 +152,11 @@ int main(void)
 		  }
 		}
 					//Ultrasonic Routine
-		
+		IntervelCnt[0] = IntervelCnt[1];
+		IntervelCnt[1] = 0;
 		ultrasonicCmd(0,1,uartAddrUpdate);// run preset 1 (short distance) burst+listen for 1 object
-		
+//		ultrasonicCmd(0,1,uartAddrUpdate+4);
+		delay_ms(20);//this delay important, it use as interval between pulse burst
 		pullUltrasonicMeasResult(false,uartAddrUpdate);      // Pull Ultrasonic Measurement Result
 		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 		TempWidth = ultraMeasResult[3];
@@ -167,12 +170,15 @@ int main(void)
 		if(objectDetected[uartAddrUpdate] == false) //如果短距离检测失败则开启长距离检测程序
 		{
 			ultrasonicCmd(1,1,uartAddrUpdate);
+//			ultrasonicCmd(1,1,uartAddrUpdate+4);
+			//this delay important, it use as interval between pulse burst
+			delay_ms(35); // maximum record length is 65ms, so delay with margin
 			pullUltrasonicMeasResult(false,uartAddrUpdate);
 			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 			TempWidth = ultraMeasResult[3];
 			TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
 			TempWidth2= TempWidth * 16;
-			
+
 			if((TempDis2<11.2)&&(TempDis2>0))
 			{
 				objectDetected[uartAddrUpdate] = true;
@@ -184,15 +190,14 @@ int main(void)
 			}
 		}
 		
-		if(objectDetected[uartAddrUpdate] == false)
+		if(objectDetected[uartAddrUpdate] == false)//just value final output objDist and objWigth once when short distance detect fail.
 		{
-			objDist[uartAddrUpdate] = 0;
-			objWidth[uartAddrUpdate] = 0;
 			printf("no project or ultrasonic error\n");
 		}else{
 			objDist[uartAddrUpdate] = TempDis2;
 			objWidth[uartAddrUpdate] = TempWidth2;
 		}
+		
 		uartAddrUpdate ++;
 	  uartAddrUpdate =uartAddrUpdate%UltraDevNum;
 	  uartAddrUpdate = LIMIT_MAX_MIN(uartAddrUpdate,7,0);
@@ -206,7 +211,7 @@ void SysTick_Handler()
 
 	// time counter
 	Millis++;
-	
+	IntervelCnt[1]++;
 		//bumper 
 	BumperIO = GPIO_ReadInputData(GPIOC)&0x0008;
 	if(BumperIO == 0x0000)

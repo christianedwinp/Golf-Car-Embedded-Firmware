@@ -1014,7 +1014,6 @@ void ultrasonicCmd(byte cmd, byte numObjUpdate,short uartIndex)
 		//do nothing
 	}
 	
-	delay_ms(70); // maximum record length is 65ms, so delay with margin
 	return;
 }
 
