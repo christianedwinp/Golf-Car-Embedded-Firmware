@@ -242,7 +242,7 @@ void SetPGAAddress(byte uartaddress)
 		if(rd != 0)
 		{
 			PGAUartAddr = rd & 0xe0;
-			printf("uart address is %x\n",PGAUartAddr>>5);
+			printf("uart address was %x\n",PGAUartAddr>>5);
 			break;
 		}
 		else if(i == 7)
@@ -250,8 +250,7 @@ void SetPGAAddress(byte uartaddress)
 			printf("can't read uart address and can't set uart address!\n");
 		}
 	}
-	//set uart address
-	
+	//set uart address	
 	dataw = (rd&0x1f)+(uartaddress<<5);
 	printf("uartaddress %x\n",uartaddress);
 	registerWrite(0x1f,dataw,PGAUartAddr>>5);
@@ -288,13 +287,6 @@ void initSTM32F1PGA460(byte mode, uint32_t baud)
 		   THRBW[i] = 0x10 + (uartAddrUpdate << 5); 
 	}
 	
-	// turn on LP's Red LED to indicate code has started to run
-//	pinMode(RED_LED, OUTPUT); digitalWrite(RED_LED, HIGH);
-
-	// turn off BOOSTXL-PGA460's diagnostic LEDs
-//	pinMode(DS1_LED, OUTPUT); digitalWrite(DS1_LED, LOW);
-//	pinMode(F_DIAG_LED, OUTPUT); digitalWrite(F_DIAG_LED, LOW);
-//	pinMode(V_DIAG_LED, OUTPUT); digitalWrite(V_DIAG_LED, LOW);
 
 	// set communication mode flag
 	if (mode < 4) // 0=UART, 1=TCI, 2=OWU, 3=SPI

@@ -10,6 +10,7 @@
 #include "bsp_time.h"
 #include "pin_configuration.h"
 #include "PGA460_USSC.h"
+#include "stack.h"
 #include <math.h>
 
 enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
@@ -28,19 +29,24 @@ const uint8_t kEncoderFrequency = 20;
 uint16_t gHeartbeatCnt = 0;
 //uint16_t IOITDelayCnt = 0;
 const uint16_t kHeartbeatMax = 9;
+RCC_ClocksTypeDef rcc;
+unsigned short BumperIO;
 short BumperCnt;
 byte BumperState,OneTimeSend;
+
+unsigned char UltrSendflag = 0x00;
+uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
+short IntervelCnt[2];
 double objDist[8] ,objWidth[8],TempDis2,TempWidth2 ;
 uint16_t TempDis=0,TempWidth=0;
 byte objectDetected[8] = {false,false,false,false,false,false,false,false};
+double temperature[7] = {0,0,0,0,0,0,0,0};
+struct Stack temperatureReading = {temperature,0}; 
 
-unsigned char UltrSendflag = 0x00;
-unsigned short BumperIO;
-
-/*  ONLY FOR DEBUG
-*   This func is used to configure MCO which can help debug clock
-*   The selected Clock will output to PA.8 (Encoder#1+)
-*/
+/**@ ONLY FOR DEBUG
+ *   This func is used to configure MCO which can help debug clock
+ *   The selected Clock will output to PA.8 (Encoder#1+)
+ */
 void MCO(enum MCO_DEBUG_MODE mode)
 {
 	GPIO_InitTypeDef        GPIO_InitStructure;
@@ -96,34 +102,47 @@ void IWDG_Init(u8 prer,u16 rlr)
 	IWDG_Enable();  //Ê¹ÄÜIWDG	
 }
 
-RCC_ClocksTypeDef rcc;
-uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
-short IntervelCnt[2];
+// Determine the speed of sound by temperature sensor reading inside PGA460Q1
+double speedSoundByTemp(double temp){
+	if(temp >= 0){
+		return temp*0.6+331;
+	}else{
+		return temp*0.6+331;
+	}
+}
+
 int main(void)
 {
 	int Cnt;
-	short uartAddrUpdate = 0;
-	int speedSound = 343; // 343 degC at room temperature
-	double digitalDelay = 0.00005*343;
+		
 	RCC_GetClocksFreq(&rcc);
 	Systick_Init();
 	BSP_Init();
-	BSP_DelayInit();	         		// Init delpy parameters
+	BSP_DelayInit();	         	// Init delpy parameters
 	BSP_LEDTestInit();       	    // Init LED on board to control rely	
 	BSP_BumperIO();
-	BSP_UsartInit(115200);     	// Init USART1 for debug, baudrate=115200
-	//MCO(NONE);                  // Debug system clock, use it only when you want to check clock
+	BSP_UsartInit(115200);     		// Init USART1 for debug, baudrate=115200
+	//MCO(NONE);                  	// Debug system clock, use it only when you want to check clock
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
 	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
-	InitPGA460();
-	
-//delay_ms(500);
+
+	short uartAddrUpdate = 0;
+	Stack_Init(temperatureReading);
+	InitPGA460(1,0,1,1,1)			// param : configPGA460, uartAddrUpdate, detectAddr, runDiag, runEDD
+	double avgTemperature = Stack_totalVal(temperatureReading) / temperatureReading.size; 
+	if(avgTemperature == 0){
+		double speedSound = speedSoundByTemp(25);
+		double digitalDelay = 0.00005 * speedSound;
+	}else{
+		double speedSound = speedSoundByTemp(avgTemperature);
+		double digitalDelay = 0.00005 * speedSound;
+	}
+		
 	BSP_TimerInit(kEncoderFrequency);
 			
 	delay_ms(500);
-//	
-	BSP_TimerInit(kEncoderFrequency);
+
 //	BSP_Timer6PWM();
 //	IWDG_Init(4, 120);	// 192ms
 //	IWDG_ReloadCounter();
@@ -137,44 +156,41 @@ int main(void)
 	while (1)
 	{
 		//update by timer
-		if(gTimerFlag == 1)
-		{
+		if(gTimerFlag == 1){
 			gTimerFlag = 0 ;
 			Cnt++;
 			Cnt = Cnt%10;
-			if((Cnt>5)&&(Cnt<10))
-			{
+			if((Cnt>5)&&(Cnt<10)){
 				registerRead(0x1f,0);
-				GPIO_SetBits(GPIOB,GPIO_Pin_13);
-			
+				GPIO_SetBits(TEST_LED_PORT,TEST_LED_1);			
 			}else if(Cnt<5){
-//				GPIO_ResetBits(GPIOB,GPIO_Pin_13);
 				GPIO_ResetBits(TEST_LED_PORT, TEST_LED_1 );	 
-			
-		  }
+			}
 		}
-					//Ultrasonic Routine
+		
+		//ULTRASONIC ROUTINE
 		IntervelCnt[0] = IntervelCnt[1];
 		IntervelCnt[1] = 0;
-		ultrasonicCmd(0,1,uartAddrUpdate);// run preset 1 (short distance) burst+listen for 1 object
-//		ultrasonicCmd(0,1,uartAddrUpdate+4);
-		delay_ms(20);//this delay important, it use as interval between pulse burst
-		pullUltrasonicMeasResult(false,uartAddrUpdate);      // Pull Ultrasonic Measurement Result
+
+		//Short range measurement, detect 1 object, from address X
+		ultrasonicCmd(0,1,uartAddrUpdate);
+		//interval between burst for short range 
+		delay_ms(20);
+		// Pull Ultrasonic Measurement Result
+		pullUltrasonicMeasResult(false,uartAddrUpdate);      
 		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 		TempWidth = ultraMeasResult[3];
 		TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
 		TempWidth2 = TempWidth * 16;
-		if((TempDis2>0.15)&(TempDis2<1.2))
-		{
+		if((TempDis2>0.15)&(TempDis2<1.2)){
 			objectDetected[uartAddrUpdate] = true;
 		}
 		
-		if(objectDetected[uartAddrUpdate] == false) //如果短距离检测失败则开启长距离检测程序
-		{
+		//if failed to read short range, change to long range
+		if(objectDetected[uartAddrUpdate] == false){
 			ultrasonicCmd(1,1,uartAddrUpdate);
-//			ultrasonicCmd(1,1,uartAddrUpdate+4);
-			//this delay important, it use as interval between pulse burst
-			delay_ms(35); // maximum record length is 65ms, so delay with margin
+			//interval between burst for long range 
+			delay_ms(35); // maximum record length is 65ms, so delay within that margin
 			pullUltrasonicMeasResult(false,uartAddrUpdate);
 			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
 			TempWidth = ultraMeasResult[3];
@@ -191,18 +207,15 @@ int main(void)
 				printf("No object!!!\n");
 			}
 		}
-		
-		if(objectDetected[uartAddrUpdate] == false)//just value final output objDist and objWigth once when short distance detect fail.
-		{
+
+		//just value final output objDist and objWidth once when short distance detect fail.
+		if(objectDetected[uartAddrUpdate] == false){
 			printf("no project or ultrasonic error\n");
 		}else{
 			objDist[uartAddrUpdate] = TempDis2;
 			objWidth[uartAddrUpdate] = TempWidth2;
 		}
 		
-		uartAddrUpdate ++;
-	  uartAddrUpdate =uartAddrUpdate%UltraDevNum;
-	  uartAddrUpdate = LIMIT_MAX_MIN(uartAddrUpdate,7,0);
 		objectDetected[uartAddrUpdate] =false;
 	}
 }
@@ -210,48 +223,38 @@ int main(void)
 
 void SysTick_Handler()
 {
-
 	// time counter
 	Millis++;
 	IntervelCnt[1]++;
-		//bumper 
+	
+	//bumper 
 	BumperIO = GPIO_ReadInputData(GPIOC)&0x0008;
-	if(BumperIO == 0x0000)
-	{
+	if(BumperIO == 0x0000){
 		BumperCnt++;
-	}else {
+	}else{
 		BumperState = 0x00;
 		BumperCnt = 0;
 	}
-	if(BumperCnt>20)
-	{
+	if(BumperCnt>20){
 		BumperCnt = 0;
 		BumperState = 0x01;
 	}
 	
-	if((Millis%100) == 0)
-	{
+	if((Millis%100) == 0){
 		OneTimeSend = 0x01;
 		if(BumperState == 0x00)
 			BSP_CanSendBumper(BUMPER_NO_CRASH);
 	}
-	if((BumperState == 0x01)&&(OneTimeSend == 0x01))
-	{
+	if((BumperState == 0x01)&&(OneTimeSend == 0x01)){
 		OneTimeSend = 0x00;
 		BSP_CanSendBumper(BUMPER_CRASH);
 	}
-
 }
 
 void TIM6_IRQHandler()
 {
-
-	if(TIM_GetITStatus(TIM6,TIM_IT_Update) == SET ) 
-	{
-	
-
-	  }//-11.2us
-		TIM_ClearITPendingBit(TIM6,TIM_IT_Update); 
-		TIM_ClearFlag(TIM6,TIM_FLAG_Update);
+	if(TIM_GetITStatus(TIM6,TIM_IT_Update) == SET ){}//-11.2us
+	TIM_ClearITPendingBit(TIM6,TIM_IT_Update); 
+	TIM_ClearFlag(TIM6,TIM_FLAG_Update);
 }
 

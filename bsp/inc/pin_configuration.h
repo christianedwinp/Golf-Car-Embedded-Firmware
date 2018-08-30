@@ -91,30 +91,12 @@
 
 // ULTRASONIC PINS
 #ifdef STM32F10X_HD
- #define MUXPORT										GPIOD
- #define MUXCLK											RCC_APB2Periph_GPIOD
- 
- #define MUX1_ENABLE								GPIO_Pin_10
- #define MUX1_CHANNEL_SELECT_A			GPIO_Pin_11
- #define MUX1_CHANNEL_SELECT_B			GPIO_Pin_12
- 
- #define MUX2_ENABLE								GPIO_Pin_13
- #define MUX2_CHANNEL_SELECT_A			GPIO_Pin_14
- #define MUX2_CHANNEL_SELECT_B			GPIO_Pin_15
- 
- #define ULTRASONIC_TRIG						GPIO_Pin_6
- #define ULTRASONIC_TRIGPORT				GPIOC
- #define ULTRASONIC_TRIGCLK					RCC_APB2Periph_GPIOC
- 
- #define ULTRASONIC_ECHO1						GPIO_Pin_1
- #define ULTRASONIC_ECHO2						GPIO_Pin_2
- #define ULTRASONIC_ECHOPORT				GPIOC
- #define ULTRASONIC_ECHOCLK					RCC_APB2Periph_GPIOC
- 
- #define ULTRASONIC_VCOMPARE1				GPIO_Pin_4
- #define ULTRASONIC_VCOMPARE2				GPIO_Pin_5
- #define ULTRASONIC_VCOMPAREPORT		GPIOA
- #define ULTRASONIC_VCOMPARECLK			RCC_APB2Periph_GPIOA 
+ #define USART_TX_US					GPIO_Pin_2
+ #define USART_RX_US					GPIO_Pin_3
+ #define USART_PORT_US 					GPIOA
+ #define USART_IO_CLK_US			 	RCC_APB2Periph_GPIOA
+ #define USART_CHANNEL_US				USART2
+ #define USART_CLK_US 					RCC_APB1Periph_USART2
 #endif
 
 #endif

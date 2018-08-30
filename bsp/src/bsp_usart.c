@@ -118,18 +118,18 @@ void BSP_Usart2Init(int baud){//PA2 PA3
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE); 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
+	RCC_APB1PeriphClockCmd(USART_CLK_US, ENABLE); 
+	RCC_APB2PeriphClockCmd(USART_IO_CLK_US,ENABLE);
  
 	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Pin = USART_TX_US;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //复用推挽输出
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);    
+	GPIO_Init(USART_PORT_US, &GPIO_InitStructure);    
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Pin = USART_RX_US;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;	//上拉输入
-	GPIO_Init(GPIOA, &GPIO_InitStructure);   //初始化GPIOA
+	GPIO_Init(USART_PORT_US, &GPIO_InitStructure);   //初始化GPIOA
 
 	USART_InitStructure.USART_BaudRate = baud;				//波特率设置：19200  2400 115200
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;	//数据位数设置：8位

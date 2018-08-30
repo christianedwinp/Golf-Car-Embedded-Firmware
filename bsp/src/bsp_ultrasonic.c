@@ -3,36 +3,99 @@
 #include "bsp_time.h"
 #include <stdio.h>
 #include "PGA460_USSC.h"
-void InitPGA460() //发射驱动信号之后2ms左右之后就基本得到了echo信号
-	                //我们的驱动信号是40Khz，看官方的仿真资料，发射14个pulse得到的echo信号有比较大的echo信号
-{
+#include "stack.h"
+
+/*------------------------------------------------- InitPGA460 -----
+ |  Function InitPGA460
+ |
+ |  Purpose:  Initialize PGA460Q1, either single program or multiple program
+ |
+ |  Parameters:
+ |		configPGA460 (IN) -- set internal parameter and communication interface of a single PGA460 chip
+ |			0=No, means you have set the internal parameter of the PGA460 chip and will drive the board directly
+ |			1=Yes, means you will set the internal parameter of the PGA460 chip
+ | 		uartAddrUpdate (IN) -- PGA460 address range from 0 to 7
+ |			if configPGA460 param 0, this param has to be filled with the address of ultrasonic to be initialize
+ | 		detectAddr (IN) -- retrieve uart addresses that are connected in the bus
+ |			0=don't run
+ |			1=run
+ | 		runDiag (IN) -- run system diagnostic and print the result
+ |			0=No
+ |			1=Yes
+ | 		runEDD (IN) -- retrieve 128 raw echo data and print the result
+ |			0=No
+ |			1=Yes
+ *-------------------------------------------------------------------*/
+void InitPGA460(int configPGA460, byte uartAddrUpdate, int detectAddr, int runDiag, int runEDD){
 	double result;
-	short i;
-	byte uartAddress = 0x00;
-	initSTM32F1PGA460(0,19200);//初始化使用uart通信，baud=115200，串口地址为0，<0-7>,
-																//这个串口地址是PGA的地址，记录在它的EEPROM中。
-																//在这个函数中读取了这个PGA的地址并设置了这个PGA的UART的地址为我们所需要的地址
-//	#if  SetUltraAddress
-//		SetPGAAddress(0x00);   //set Device address   , wehn you initallize the address ,this function should be commented 
-//	#endif
+
+	//Set communication interface of PGA460 : OWU mode
+	initSTM32F1PGA460(2,19200);
+
+	if(configPGA460){
+		UltraDevNum = 0;
+		//set address to the ultrasonic
+		SetPGAAddress(uartAddrUpdate);
+	}
 	
-	for(i = 0; i<UltraDevNum;i++)  
-	{
-		initThresholds(1,i);//50% 的阈值，对应数据手册18页的Threshold Data Assignment,这个是
-										//经过转换后数字信号的比较阈值
-		defaultPGA460(2,uartAddress); //设置寄存器的前42个的默认参数
-		initTVG(2,1,i);  //设置模拟前端的时变增益，用来提高信噪比
-    
-//	registerWrite(0x4b,0x80);
-		result = runDiagnostics(1,0,i);
-		printf("frequency: %f Khz\n",result);
-			result = runDiagnostics(0,1,i);
-		printf("decay preiod: %f us\n",result);
-			delay_ms(50);
-		byte burnStat = burnEEPROM(i);
-			if(burnStat == true){printf("EEPROM programmed successfully.");}
-		else{printf("EEPROM program failed.");}
+	//read available ultrasonic address
+	if(detectAddr){
+		short i ;
+		byte rd;
+		for(i=0;i<8;i++)
+		{
+			rd = registerRead(0x1f,i);
+			if(rd != 0)
+			{
+				PGAUartAddr = rd & 0xe0;
+				printf("uart address %x connected \n",PGAUartAddr>>5);
+			}
+			else if(i == 7)
+			{
+				printf("can't read uart address!\n");
+			}
+		}
+	}
 		
-		uartAddress = uartAddress +0x01;
+	//bulk threshold write : threshold 50%
+	initThresholds(1,uartAddrUpdate);
+	//bulk user EEPROM write : set using custom transducer
+	defaultPGA460(2,uartAddrUpdate);
+	//bulk TVG write
+	initTVG(2,1,uartAddrUpdate);
+	//with/without run system diagnostic option, need to get temperature to determine speed of sound
+	double temperature = runDiagnostics(0,2,uartAddrUpdate);
+	Stack_Push(temperatureReading, temperature);
+
+	//run system diagnostic if necessary
+	if(runDiag){
+		printf("SYSTEM DIAGNOSTIC \n");
+		result = runDiagnostics(1,0,uartAddrUpdate);
+		printf("Address %hhx - Frequency: %f Khz\n",uartAddrUpdate, result);
+		result = runDiagnostics(0,1,uartAddrUpdate);
+		printf("Address %hhx - Decay Period: %f us\n",uartAddrUpdate,result);
+		printf("Address %hhx - Die Temperature : %f C\n",uartAddrUpdate,temperature);
+		result = runDiagnostics(0,3,uartAddrUpdate);
+		printf("Address %hhx - Noise Level: %f \n",uartAddrUpdate,result);
+	}
+
+	//burn EEPROM
+	delay_ms(50);
+	byte burnStat = burnEEPROM(uartAddrUpdate);
+	if(burnStat == true){
+		printf("Address %hhx - EEPROM programmed successfully.", uartAddrUpdate,);
+	}else{
+		printf("Address %hhx - EEPROM program failed.", uartAddrUpdate,);
+	}
+
+	//run echo data dump if necessary
+	if(runEDD){
+		printf("Address %hhx - EED: ",uartAddrUpdate);
+		runEchoDataDump(1, uartAddrUpdate); //run prset 1 
+		for (int n = 0; n < 128; n++){
+			byte echoDataDumpElement = pullEchoDataDump(n, );
+			printf("%d, ",echoDataDumpElement);
+		}
+		printf("\n");
 	}
 }
