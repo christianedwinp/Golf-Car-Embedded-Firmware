@@ -118,17 +118,13 @@ int main(void)
 	BSP_EpsInit();              	// Init RS485
 	InitPGA460();
 	
-<<<<<<< HEAD
 //delay_ms(500);
 	BSP_TimerInit(kEncoderFrequency);
-	
-=======
 			
 	delay_ms(500);
 //	
 	BSP_TimerInit(kEncoderFrequency);
 //	BSP_Timer6PWM();
->>>>>>> 22a6036e6d1cac7ade49591b56d0063bf6fd7d34
 //	IWDG_Init(4, 120);	// 192ms
 //	IWDG_ReloadCounter();
 	
