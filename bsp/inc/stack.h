@@ -17,6 +17,6 @@ void Stack_Push(Stack *S, double d);
 
 void Stack_Pop(Stack *S);
 
-double Stack_totalVal(Stack *S);
+double Stack_Avg(Stack *S);
 
 #endif

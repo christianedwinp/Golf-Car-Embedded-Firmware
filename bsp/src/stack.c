@@ -21,21 +21,21 @@ void Stack_Push(Stack *S, double d)
     if (S->size < STACK_MAX)
         S->data[S->size++] = d;
     else
-        printf("Error: stack full\n");
+        printf("Error: stack full \n");
 }
 
 void Stack_Pop(Stack *S)
 {
     if (S->size == 0)
-        printf("Error: stack empty\n");
+        printf("Error: stack empty \n");
     else
         S->size--;
 }
 
-double Stack_totalVal(Stack *S){
-    double sum = 0;
-    for(int i=0; i < S->size; i++){
-        sum += S->data[i];
-    }
-    return sum;
+double Stack_Avg (Stack *S){
+	double sum = 0;
+  for(int i=0; i < S->size; i++){
+      sum += S->data[i];
+  }	
+	return (sum/S->size); 
 }

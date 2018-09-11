@@ -1,8 +1,6 @@
 #include "bsp_timer.h"
 #include "bsp_io.h"
-#include "bsp_encoder.h"
 #include "pin_configuration.h"
-#include "bsp_can.h"
 
 volatile uint8_t gTimerFlag = 0;
 short PWMPeriodCnt;
@@ -40,21 +38,6 @@ void BSP_TimerInit(uint16_t freq)
 	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
-
-
-void TIM1_UP_IRQHandler(void)
-{
-	
-	if(TIM_GetITStatus(ENC_TIMER,TIM_IT_Update) == SET ) 
-	{
-		BSP_EncoderRead();
-		BSP_CanSendEncoder(gEncoder);
-		gTimerFlag = 1;
-	}
-	
-	TIM_ClearITPendingBit(ENC_TIMER,TIM_IT_Update);  			
-}
-
 
 void BSP_Timer6PWM()
 {

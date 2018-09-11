@@ -1,6 +1,5 @@
 #include "bsp_delay.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////// 
 
 uint32_t  fac_us=0;							//us延时倍乘数			   
@@ -14,14 +13,8 @@ void BSP_DelayInit(void)
 {	
  	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
 	fac_us=72000000/8000000;						//represents the number of systick clocks required for each uS
-<<<<<<< HEAD
 	fac_ms=(uint16_t)fac_us*1000;							//represents the number of systick clocks required for each mS
-=======
-	fac_ms=fac_us*1000;							//represents the number of systick clocks required for each mS
->>>>>>> 22a6036e6d1cac7ade49591b56d0063bf6fd7d34
 }								    
-
-
 //Delay micro second
 //param : number of uS to delay, max 798915us i.e from 2^24/fac_us @ fac_us=21
 void BSP_DelayUs(uint32_t nus)
@@ -53,5 +46,3 @@ void BSP_DelayMs(uint16_t nms)
 	SysTick->CTRL&=~SysTick_CTRL_ENABLE_Msk;	//关闭计数器
 	SysTick->VAL =0X00;       					//清空计数器	  	  
 }  
-			 
-

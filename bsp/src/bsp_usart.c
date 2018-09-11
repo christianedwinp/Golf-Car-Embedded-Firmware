@@ -3,7 +3,7 @@
 #include "pin_configuration.h"
 #include "string.h"
 #include "bsp_time.h"
-//////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
 #if 1
 #pragma import(__use_no_semihosting)    
@@ -19,8 +19,8 @@ void _sys_exit(int x)
 { 
 	x = x; 
 } 
-
 #endif
+
 uint16_t UsartRxBuffSize = 50;
 unsigned short Rx_Head = 0 ,Rx_Tail = 0;
 char Rx[50];

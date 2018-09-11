@@ -36,6 +36,7 @@
 #include "PGA460_USSC.h"
 #include "bsp_usart.h"
 #include "bsp_time.h"
+#include "pin_configuration.h"
 #include "math.h"
 //#include "PGA460_SPI.h"
 //#include "Energia.h"
@@ -207,106 +208,148 @@
 		byte misoBuf[131]; 				// SPI MISO receive data buffer for all commands	
 
 
-/*------------------------------------------------- initBoostXLPGA460 -----
- |  Function initBoostXLPGA460
+/*------------------------------------------------- initSTM32F1PGA460 -----
+ |  Function initSTM32F1PGA460
  |
- |  Purpose:  Configure the master communication mode and BOOSTXL-PGA460 hardware to operate in UART, TCI, or OWU mode.
+ |  Purpose:  Configure the master communication mode and STM32F103VET6 hardware to operate in UART, TCI, or OWU mode.
  |  Configures master serial baud rate for UART/OWU modes. Updates UART address based on sketch input.
  |
  |  Parameters:
- |		mode (IN) -- sets communicaiton mode. 
+ |		mode (IN) 	-- sets communicaiton mode. Check reference folder for other potential communication interface, this project support only UART or OWU communication
  |			0=UART 
- |			1=TCI 
- |			2=OWU 
- |			3-SPI (Synchronous Mode)
- |			4 = Not Used
- |			5 = Not Used
- |			6=Bus_Demo_Bulk_TVG_or_Threshold_Broadcast_is_True
- |			7=Bus_Demo_UART_Mode
- |			8=Bus_Demo_OWU_One_Time_Setup
- |			9=Bus_Demo_OWU_Mode
- | 		baud (IN) -- PGA460 accepts a baud rate of 9600 to 115.2k bps
- | 		uartAddrUpdate (IN) -- PGA460 address range from 0 to 7
- |
+ |			1=OWU 
+ | 		baud (IN) 	-- PGA460 accepts a baud rate of 9600 to 115.2k bps
+ | 		setAddr (IN)-- to trigger SetPGAAdress function
+ |			0=Have set up uart address of each ultrasonic module in the bus 
+ |			1=set uart address of an ultrasonic module
+ |		uartAddrUpdate (IN) -- PGA460 address range from 0 to 7. If setAddr param 0, don't care this value 
  |  Returns:  none
  *-------------------------------------------------------------------*/
- uint8_t PGAUartAddr = 0;
- byte dataw;
-void SetPGAAddress(byte uartaddress)
+void initSTM32F1PGA460(byte mode, uint32_t baud, int setAddress, byte uartAddrUpdate)
 {
-	short i ;
-	byte rd;
-	for(i=0;i<8;i++)
-	{
-		rd = registerRead(0x1f,i);
-		if(rd != 0)
-		{
-			PGAUartAddr = rd & 0xe0;
-			printf("uart address was %x\n",PGAUartAddr>>5);
-			break;
-		}
-		else if(i == 7)
-		{
-			printf("can't read uart address and can't set uart address!\n");
-		}
-	}
-	//set uart address	
-	dataw = (rd&0x1f)+(uartaddress<<5);
-	printf("uartaddress %x\n",uartaddress);
-	registerWrite(0x1f,dataw,PGAUartAddr>>5);
-}
-void initSTM32F1PGA460(byte mode, uint32_t baud)
-{
-	int i;
-	byte uartAddrUpdate;
-	BSP_Usart2Init(baud);	// initialize PGA460 UART serial channel
-	delay_ms(50);
-
 	// globally update target PGA460 UART address and commands	
-	for(i=0;i<8;i++)
+	byte addressSetup = 0;
+	for(int i=0;i<8;i++)
 	{
-		// Update commands to account for new UART addr
-		  // Multi Address
-		uartAddrUpdate = i;
-		   P1BL[i] = 0x00 + (uartAddrUpdate << 5);	   
-		   P2BL[i] = 0x01 + (uartAddrUpdate << 5);
-		   P1LO[i] = 0x02 + (uartAddrUpdate << 5);
-		   P2LO[i] = 0x03 + (uartAddrUpdate << 5);
-		   TNLM[i] = 0x04 + (uartAddrUpdate << 5);
-		   UMR[i] = 0x05 + (uartAddrUpdate << 5);
-		   TNLR[i] = 0x06 + (uartAddrUpdate << 5);
-		   TEDD[i] = 0x07 + (uartAddrUpdate << 5);
-		   SD[i] = 0x08 + (uartAddrUpdate << 5);
-		   SRR[i] = 0x09 + (uartAddrUpdate << 5); 
-		   SRW[i] = 0x0A + (uartAddrUpdate << 5);
-		   EEBR[i] = 0x0B + (uartAddrUpdate << 5);
-		   EEBW[i] = 0x0C + (uartAddrUpdate << 5);
-		   TVGBR[i] = 0x0D + (uartAddrUpdate << 5);
-		   TVGBW[i] = 0x0E + (uartAddrUpdate << 5);
-		   THRBR[i] = 0x0F + (uartAddrUpdate << 5);
-		   THRBW[i] = 0x10 + (uartAddrUpdate << 5); 
+		//Update commands to account for new UART addr
+		addressSetup = i;
+		P1BL[i] = 0x00 + (addressSetup << 5);	   
+		P2BL[i] = 0x01 + (addressSetup << 5);
+		P1LO[i] = 0x02 + (addressSetup << 5);
+		P2LO[i] = 0x03 + (addressSetup << 5);
+		TNLM[i] = 0x04 + (addressSetup << 5);
+		UMR[i] = 0x05 + (addressSetup << 5);
+		TNLR[i] = 0x06 + (addressSetup << 5);
+		TEDD[i] = 0x07 + (addressSetup << 5);
+		SD[i] = 0x08 + (addressSetup << 5);
+		SRR[i] = 0x09 + (addressSetup << 5); 
+		SRW[i] = 0x0A + (addressSetup << 5);
+		EEBR[i] = 0x0B + (addressSetup << 5);
+		EEBW[i] = 0x0C + (addressSetup << 5);
+		TVGBR[i] = 0x0D + (addressSetup << 5);
+		TVGBW[i] = 0x0E + (addressSetup << 5);
+		THRBR[i] = 0x0F + (addressSetup << 5);
+		THRBW[i] = 0x10 + (addressSetup << 5); 
 	}
 	
-
+	//turn high LED indicator to show program has run
+	TEST_LED_PORT -> BRR = TEST_LED_1;
+	
 	// set communication mode flag
-	if (mode < 4) // 0=UART, 1=TCI, 2=OWU, 3=SPI
+	if (mode < 2) // 0=UART, 1=OWU, 2=TCI, 3=SPI
 	{
 		comm = mode;
-	}
-	else if (mode == 6) 
-	{
-		comm = 6; // bus demo user input mode only, and threshold or TVG bulk write broadcast commands are true
-	}
-	else if ((mode == 7) || (mode == 9)) 
-	{
-		comm = mode - 7; // bus demo only for either UART or OWU mode
-	}
-	else
-	{
+	}else{
 		comm = 99; // invalid communication type
+		printf("ERROR - Invalid Communication Type! \n");
 	}
 
-	return;
+	switch (mode)
+	{
+		case 0: // UART Mode
+			BSP_Usart2Init(baud);	
+			break;
+		case 1: //OWU setup (part I)
+			BSP_Usart2Init(baud);	
+			PULSE_P1 = 0x80 | PULSE_P1; // update IO_IF_SEL bit to '1' for OWU mode for bulk EEPROM write
+			break;	
+		case 2: //TCI Mode	
+			// NOT AVAILABLE
+			break;				
+		case 3: // SPI mode			
+			//NOT AVAILABLE
+			break;
+		default: break;
+	}
+	
+	
+	
+	if(setAddress){
+		uint8_t previousAddr = 0;
+		short i, flag = 0;
+		byte rd, dataw;
+		
+		// check for valid UART address
+		if (uartAddrUpdate > 7)
+		{
+			uartAddrUpdate = 0; // default to '0'
+			printf("ERROR - Invalid UART Address Update! \r\n");
+		}
+		
+		for(i=0;i<8;i++)
+		{
+			rd = registerRead(0x1f,i);
+			if(rd != 0)
+			{
+				previousAddr = rd & 0xe0;
+				printf("\n uart address was %x   \r\n",previousAddr>>5);
+				flag = 1;
+				break;
+			}
+			else if(i == 7 && flag != 1)
+			{
+				printf("can't read uart address and can't set uart address! \r\n");
+			}
+		}
+		//set uart address	
+		dataw = (rd&0x1f)+(uartAddrUpdate<<5);
+		printf("uart address now %x\n",uartAddrUpdate);
+		registerWrite(0x1f,dataw,previousAddr>>5);
+	}
+	
+	
+	//OWU setup (part II)
+	if ((comm == 2) || (mode == 8)) // mode8 is for one time setup of OWU per slave device for bus demo
+	{		
+		// UART write to register PULSE_P1 (addr 0x1E) to set device into OWU mode
+		regAddr = 0x1E;
+		regData = PULSE_P1;
+		
+		byte rd;
+		uint8_t uartAddrConnected;
+		bool flag = 0;
+		for(int i=0;i<8;i++)
+		{
+			rd = registerRead(0x1f,i);
+			if(rd != 0){
+				uartAddrConnected = rd & 0xe0;
+				byte buf10[5] = {syncByte, SRW[uartAddrConnected>>5], regAddr, regData, calcChecksum(SRW[uartAddrConnected>>5])};
+				Usart2Send(buf10, sizeof(buf10));	
+				flag = 1;
+			}else if(i == 7 && flag != 1){
+				printf("OWU setup failed!\n");
+			}
+		}
+	}	
+	delay_ms(50);	
+	
+	//LED status indication
+	for(int loops = 0; loops < 5; loops++){
+		TEST_LED_PORT -> BRR = TEST_LED_1;
+		delay_ms(200);
+		TEST_LED_PORT -> BSRR = TEST_LED_1;
+		delay_ms(200);
+	}	
 }
 
 /*------------------------------------------------- defaultPGA460 -----
@@ -550,7 +593,7 @@ byte registerRead(byte addr,short uartIndex)
 	
 	regAddr = addr;
 	byte buf9[4] = {syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex])};
-	printf("read cmd : %x,%x,%x,%x\n",syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex]));
+	//printf("read cmd : %x,%x,%x,%x  || ",syncByte, SRR[uartIndex], regAddr, calcChecksum(SRR[uartIndex]));
 	if (comm == 0 || comm == 2) // UART or OWU mode
 	{
 		Usart2Send(buf9, sizeof(buf9));
@@ -560,10 +603,9 @@ byte registerRead(byte addr,short uartIndex)
 	{
 		starttime = millis();
 	//	while((Usart2_DataAvailable() == 0)&&((millis()- starttime)<250)){}
-			
-		
+
 		if(Usart2_DataAvailable() == 0) {
-			printf("can't read the register, adress: %x\n",addr);
+			//printf("can't read the register, adress: %x \r\n",addr);
 			return 0;
 		}
 		
@@ -579,7 +621,7 @@ byte registerRead(byte addr,short uartIndex)
 		   }
 		}
 	}
-	printf("address: %x,---data: %x\n",addr,data);
+	//printf("address: %x,---data: %x\r\n",addr,data);
 	return data;
 }
 	

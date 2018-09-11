@@ -550,21 +550,6 @@
               <FilePath>..\..\bsp\src\bsp_timer.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_can.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\bsp\src\bsp_can.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_encoder.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\bsp\src\bsp_encoder.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_eps.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\bsp\src\bsp_eps.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_usart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\bsp\src\bsp_usart.c</FilePath>
@@ -588,6 +573,11 @@
               <FileName>stack.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\bsp\src\stack.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_eps.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\bsp\src\bsp_eps.c</FilePath>
             </File>
           </Files>
         </Group>
