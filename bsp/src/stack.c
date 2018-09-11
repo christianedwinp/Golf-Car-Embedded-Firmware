@@ -1,4 +1,5 @@
 #include "stack.h" 
+#include <stdio.h>
 
 void Stack_Init(Stack *S)
 {
@@ -8,7 +9,7 @@ void Stack_Init(Stack *S)
 double Stack_Top(Stack *S)
 {
     if (S->size == 0) {
-        fprintf(stderr, "Error: stack empty\n");
+        printf("Error: stack empty\n");
         return -1;
     } 
 
@@ -20,13 +21,13 @@ void Stack_Push(Stack *S, double d)
     if (S->size < STACK_MAX)
         S->data[S->size++] = d;
     else
-        fprintf(stderr, "Error: stack full\n");
+        printf("Error: stack full\n");
 }
 
 void Stack_Pop(Stack *S)
 {
     if (S->size == 0)
-        fprintf(stderr, "Error: stack empty\n");
+        printf("Error: stack empty\n");
     else
         S->size--;
 }

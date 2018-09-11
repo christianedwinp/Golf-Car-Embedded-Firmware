@@ -40,8 +40,7 @@ short IntervelCnt[2];
 double objDist[8] ,objWidth[8],TempDis2,TempWidth2 ;
 uint16_t TempDis=0,TempWidth=0;
 byte objectDetected[8] = {false,false,false,false,false,false,false,false};
-double temperature[7] = {0,0,0,0,0,0,0,0};
-struct Stack temperatureReading = {temperature,0}; 
+struct Stack temperatureReading = {{0,0,0,0,0,0,0,0},0}; 
 
 /**@ ONLY FOR DEBUG
  *   This func is used to configure MCO which can help debug clock
@@ -126,10 +125,10 @@ int main(void)
 	BSP_CanInit(250);           	// Init CAN1, baudrate=250Kbps
 	BSP_EncoderInit();						
 	BSP_EpsInit();              	// Init RS485
-
+	
 	short uartAddrUpdate = 0;
-	Stack_Init(temperatureReading);
-	InitPGA460(1,0,1,1,1)			// param : configPGA460, uartAddrUpdate, detectAddr, runDiag, runEDD
+	Stack_Init(&temperatureReading);
+	InitPGA460(1,0,1,1,1);			// param : configPGA460, uartAddrUpdate, detectAddr, runDiag, runEDD
 	double avgTemperature = Stack_totalVal(temperatureReading) / temperatureReading.size; 
 	if(avgTemperature == 0){
 		double speedSound = speedSoundByTemp(25);
@@ -138,11 +137,10 @@ int main(void)
 		double speedSound = speedSoundByTemp(avgTemperature);
 		double digitalDelay = 0.00005 * speedSound;
 	}
-		
-	BSP_TimerInit(kEncoderFrequency);
-			
+	
+	BSP_TimerInit(kEncoderFrequency);			
 	delay_ms(500);
-
+	
 //	BSP_Timer6PWM();
 //	IWDG_Init(4, 120);	// 192ms
 //	IWDG_ReloadCounter();

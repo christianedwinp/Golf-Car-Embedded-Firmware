@@ -1,7 +1,7 @@
 #ifndef __STACK_H
 #define __STACK_H
 
-#define STACK_MAX 7
+#define STACK_MAX 8
 
 struct Stack {
     double  data[STACK_MAX];
