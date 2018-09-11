@@ -12,16 +12,17 @@ double Stack_Top(Stack *S)
         printf("Error: stack empty\n");
         return -1;
     } 
-
     return S->data[S->size-1];
 }
 
-void Stack_Push(Stack *S, double d)
+void Stack_Push(Stack *S, double d, byte addr)
 {
-    if (S->size < STACK_MAX)
+    if (S->size < STACK_MAX){
         S->data[S->size++] = d;
-    else
+				S->address[S->size++] = addr;
+    }else{
         printf("Error: stack full \n");
+		}
 }
 
 void Stack_Pop(Stack *S)

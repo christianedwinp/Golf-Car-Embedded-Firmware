@@ -33,7 +33,7 @@ short NEW_UART_ADDRESS = 6;
 #define ECHO_DATA_DUMP_ON 	1
 #define ECHO_DATA_DUMP_OFF	0
 
-struct Stack temperatureReading = {{0,0,0,0,0,0,0,0},0}; 
+struct Stack ultrasonic = {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0},0}; 
 
 unsigned char UltrSendflag = 0x00;
 short IntervelCnt[2];
@@ -109,11 +109,11 @@ int main(void)
 	printf("init PGA460 \r\n");
 	//TEST_LED_PORT -> BRR = TEST_LED_1;
 
-	Stack_Init(&temperatureReading);
-	if(!configPGA460(INTERFACE_UART,19200,NEW_UART_ADDRESS,CHECK_ADDRESS_ON,SYS_DIAGNOSIS_ON,ECHO_DATA_DUMP_ON, &temperatureReading)){
+	Stack_Init(&ultrasonic);
+	if(!configPGA460(INTERFACE_UART,19200,NEW_UART_ADDRESS,CHECK_ADDRESS_ON,SYS_DIAGNOSIS_ON,ECHO_DATA_DUMP_ON, &ultrasonic)){
 		return 0;
 	}
-	double avgTemperature = Stack_Avg(&temperatureReading); 
+	double avgTemperature = Stack_Avg(&ultrasonic); 
 	double speedSound = speedSoundByTemp(avgTemperature);
 	double digitalDelay = 0.00005 * speedSound;
 	
@@ -123,20 +123,25 @@ int main(void)
 	while (1)
 	{
 		//ULTRASONIC ROUTINE
-
-		//Short range measurement, detect 1 object, from address X
-//		ultrasonicCmd(0,1,uartAddrUpdate);
-//		//interval between burst for short range 
-//		delay_ms(20);
-//		// Pull Ultrasonic Measurement Result
-//		pullUltrasonicMeasResult(false,uartAddrUpdate);      
-//		TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-//		TempWidth = ultraMeasResult[3];
-//		TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
-//		TempWidth2 = TempWidth * 16;
-//		if((TempDis2>0.15)&(TempDis2<1.2)){
-//			objectDetected[uartAddrUpdate] = true;
-//		}
+		
+		for(int i=0; i < ultrasonic.size; i++){
+			//Short range measurement, detect 1 object, from address X
+			ultrasonicCmd(0,1,ultrasonic.address[i]);
+			//interval between burst for short range 
+			delay_ms(20);
+			// Pull Ultrasonic Measurement Result
+			pullUltrasonicMeasResult(false,ultrasonic.address[i]);      
+			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
+			TempWidth = ultraMeasResult[3];
+			TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
+			TempWidth2 = TempWidth * 16;
+			if((TempDis2>0.15)&(TempDis2<1.2)){
+				objectDetected[ultrasonic.address[i]] = true;
+			}
+			
+		}
+		
+		
 //		
 //		//if failed to read short range, change to long range
 //		if(objectDetected[uartAddrUpdate] == false){
@@ -177,7 +182,6 @@ void SysTick_Handler()
 {
 	// time counter
 	Millis++;
-//	IntervelCnt[1]++;
 }
 
 void TIM6_IRQHandler()

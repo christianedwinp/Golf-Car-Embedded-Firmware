@@ -57,7 +57,7 @@ bool configPGA460(byte mode, uint32_t baud, byte uartAddrUpdate, int detectAddr,
 			initTVG(2,1,uartAddrConnected);
 			//with/without run system diagnostic option, need to get temperature to determine speed of sound
 			double temperature = runDiagnostics(0,2,uartAddrConnected);
-			Stack_Push(tempStack, temperature);
+			Stack_Push(tempStack, temperature, uartAddrConnected);
 			//run system diagnostic if necessary
 			if(runDiag){
 				printf("SYSTEM DIAGNOSTIC \r\n");
@@ -160,7 +160,7 @@ bool initPGA460(byte mode, uint32_t baud, int detectAddr, int runDiag, int runED
 			initTVG(2,1,uartAddrConnected);
 			//with/without run system diagnostic option, need to get temperature to determine speed of sound
 			double temperature = runDiagnostics(0,2,uartAddrConnected);
-			Stack_Push(tempStack, temperature);
+			Stack_Push(tempStack, temperature,uartAddrConnected);
 			//run system diagnostic if necessary
 			if(runDiag){
 				printf("SYSTEM DIAGNOSTIC \r\n");

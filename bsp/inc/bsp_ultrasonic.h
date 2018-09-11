@@ -3,7 +3,6 @@
 
 #include "bsp.h" 
 #include "stack.h"
-#include <stdio.h>
 
 #define byte unsigned char
 #define CNFG_PGA460 	1
