@@ -3,8 +3,69 @@
 #include "bsp_time.h"
 #include <stdio.h>
 #include "PGA460_USSC.h"
-#include "stack.h"
 
+//STACK DATA STRUCTURE FUNCTIONS
+
+/*------------------------------------------------- Stack Functions -----
+ |  Stack_Init 							: Initialize stack
+ |  Stack_Push 							: Add temperature, speedOfSound, digitalDelay data to top of stack
+ |  Stack_Pop 							: Delete last data of stack
+ |  Stack_Temperature_Avg 	: Return avg temperature in stack 
+ *-------------------------------------------------------------------*/
+void Stack_Init(Stack *S)
+{
+  S->size = 0;
+}
+
+void Stack_Push(Stack *S, double temperature,double speedOfSound,double  digitalDelay, byte address)
+{
+	if (S->size < STACK_MAX){
+		S->temperature[S->size] = temperature;
+		S->speedOfSound[S->size] = speedOfSound;
+		S->address[S->size] = address;
+		S->size++;
+	}else{
+		printf("Error: stack full \n");
+	}
+}
+
+void Stack_Pop(Stack *S)
+{
+    if (S->size == 0)
+        printf("Error: stack empty \n");
+    else
+        S->size--;
+}
+
+double Stack_Temperature_Avg (Stack *S){
+	double sum = 0;
+  for(int i=0; i < S->size; i++){
+      sum += S->temperature[i];
+  }	
+	return (sum/S->size); 
+}
+
+
+
+//ULTRASONIC FUNCTIONS
+
+/*------------------------------------------------- speedSoundByTemp -----
+ | Function speedSoundByTemp
+ |
+ |  Purpose:  Determine the speed of sound by temperature sensor reading inside PGA460Q1
+ |
+ |  Parameters:
+ |		temp (IN) -- temperature input. Get this value from the system diagnosis of the Die
+ |	Return:
+ |		speed of sound (meter/second)
+ *-------------------------------------------------------------------*/
+double speedSoundByTemp(double temp){
+	if(temp >= 0){
+		return temp*0.6+331;
+	}else{
+		return temp*(-0.6)+331;
+	}
+}
 /*------------------------------------------------- configPGA460 -----
  |  Function configPGA460
  |
@@ -55,9 +116,11 @@ bool configPGA460(byte mode, uint32_t baud, byte uartAddrUpdate, int detectAddr,
 			defaultPGA460(2,uartAddrConnected);
 			//bulk TVG write
 			initTVG(2,1,uartAddrConnected);
-			//with/without run system diagnostic option, need to get temperature to determine speed of sound
+			//with or without run system diagnostic option, need to get temperature to determine speed of sound
 			double temperature = runDiagnostics(0,2,uartAddrConnected);
-			Stack_Push(tempStack, temperature, uartAddrConnected);
+			double speedOfSound = speedSoundByTemp(temperature);
+			double digitalDelay = 0.00005 * speedOfSound;
+			Stack_Push(tempStack, temperature, speedOfSound, digitalDelay, uartAddrConnected);
 			//run system diagnostic if necessary
 			if(runDiag){
 				printf("SYSTEM DIAGNOSTIC \r\n");
@@ -160,7 +223,9 @@ bool initPGA460(byte mode, uint32_t baud, int detectAddr, int runDiag, int runED
 			initTVG(2,1,uartAddrConnected);
 			//with/without run system diagnostic option, need to get temperature to determine speed of sound
 			double temperature = runDiagnostics(0,2,uartAddrConnected);
-			Stack_Push(tempStack, temperature,uartAddrConnected);
+			double speedOfSound = speedSoundByTemp(temperature);
+			double digitalDelay = 0.00005 * speedOfSound;
+			Stack_Push(tempStack, temperature, speedOfSound, digitalDelay, uartAddrConnected);
 			//run system diagnostic if necessary
 			if(runDiag){
 				printf("SYSTEM DIAGNOSTIC \r\n");
@@ -213,3 +278,5 @@ bool initPGA460(byte mode, uint32_t baud, int detectAddr, int runDiag, int runED
 	return 1;
 	
 }
+
+

@@ -10,36 +10,30 @@
 #include "bsp_time.h"
 #include "pin_configuration.h"
 #include "PGA460_USSC.h"
-#include "stack.h"
 #include <math.h>
 
 enum MCO_DEBUG_MODE{NONE,SYSCLK,HSI,HSE,PLLCLK_DIV2};
 
 extern volatile u32 Millis;
-extern short PWMPeriodCnt;
-extern 	byte ultraMeasResult[34+3]; 
 RCC_ClocksTypeDef rcc;
 uint8_t regaddrread = 0x1f,regaddrwr = 0x02;
 
-byte INTERFACE_UART = 0; 
-byte INTERFACE_TCI =	1;
-byte INTERFACE_OWU =	2;
-byte INTERFACE_SPI =	3;
+
 short NEW_UART_ADDRESS = 6;
-#define CHECK_ADDRESS_ON		1
-#define CHECK_ADDRESS_OFF		0
-#define SYS_DIAGNOSIS_ON 		1
-#define SYS_DIAGNOSIS_OFF 	0
-#define ECHO_DATA_DUMP_ON 	1
-#define ECHO_DATA_DUMP_OFF	0
-
-struct Stack ultrasonic = {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0},0}; 
-
-unsigned char UltrSendflag = 0x00;
-short IntervelCnt[2];
-double objDist[8] ,objWidth[8],TempDis2,TempWidth2 ;
-uint16_t TempDis=0,TempWidth=0;
-byte objectDetected[8] = {false,false,false,false,false,false,false,false};
+#define NUMBER_OBJ_DETECTED 1
+double minDistLim = 0.15;
+bool alwaysLongRangeMode = false;
+extern 	byte ultraMeasResult[34+3];
+byte INTERFACE_UART = 0, INTERFACE_TCI = 1, INTERFACE_OWU = 2, INTERFACE_SPI = 3;
+struct Stack ultrasonic = {{0,0,0,0,0,0,0,0},
+													 {0,0,0,0,0,0,0,0},
+													 {0,0,0,0,0,0,0,0},
+													 {0,0,0,0,0,0,0,0},
+													 {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}},
+													 {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}},
+													 {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}},
+													 {false,false,false,false,false,false,false,false},
+													 0}; 
 
 /**@ ONLY FOR DEBUG
  *   This func is used to configure MCO which can help debug clock
@@ -87,14 +81,6 @@ void MCO(enum MCO_DEBUG_MODE mode)
 }
 
 
-// Determine the speed of sound by temperature sensor reading inside PGA460Q1
-double speedSoundByTemp(double temp){
-	if(temp >= 0){
-		return temp*0.6+331;
-	}else{
-		return temp*(-0.6)+331;
-	}
-}
 
 int main(void)
 {
@@ -107,73 +93,69 @@ int main(void)
 	//MCO(NONE);                  // Debug system clock, use it only when you want to check clock
 	
 	printf("init PGA460 \r\n");
-	//TEST_LED_PORT -> BRR = TEST_LED_1;
-
 	Stack_Init(&ultrasonic);
 	if(!configPGA460(INTERFACE_UART,19200,NEW_UART_ADDRESS,CHECK_ADDRESS_ON,SYS_DIAGNOSIS_ON,ECHO_DATA_DUMP_ON, &ultrasonic)){
+		printf("Initialization Unsuccesfull \r\n");
 		return 0;
 	}
-	double avgTemperature = Stack_Avg(&ultrasonic); 
-	double speedSound = speedSoundByTemp(avgTemperature);
-	double digitalDelay = 0.00005 * speedSound;
-	
+		
 	delay_ms(500);
 	printf("all initialized  \r\n");
 	
 	while (1)
 	{
 		//ULTRASONIC ROUTINE
-		
+		//Algorithm : detect short range, if no object detected use long range measurement, else no object or object too close
 		for(int i=0; i < ultrasonic.size; i++){
-			//Short range measurement, detect 1 object, from address X
-			ultrasonicCmd(0,1,ultrasonic.address[i]);
-			//interval between burst for short range 
+			
+			//Short range measurement, detect X object, from address Y
+			ultrasonicCmd(SHORT_DIST_MEASUREMENT,NUMBER_OBJ_DETECTED,ultrasonic.address[i]);
+			//interval between burst cycle for short range 
 			delay_ms(20);
-			// Pull Ultrasonic Measurement Result
-			pullUltrasonicMeasResult(false,ultrasonic.address[i]);      
-			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-			TempWidth = ultraMeasResult[3];
-			TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
-			TempWidth2 = TempWidth * 16;
-			if((TempDis2>0.15)&(TempDis2<1.2)){
-				objectDetected[ultrasonic.address[i]] = true;
+			//Pull Ultrasonic Measurement Result
+			pullUltrasonicMeasResult(false,ultrasonic.address[i]);
+			
+			for(byte j=0; j < NUMBER_OBJ_DETECTED; j++){
+				ultrasonic.distance[i][j] = printUltrasonicMeasResult(0 + (j * 3), &ultrasonic, i);
+				ultrasonic.width[i][j] = printUltrasonicMeasResult(1 + (j * 3), &ultrasonic, i);
+				ultrasonic.peak[i][j] = printUltrasonicMeasResult(2 + (j * 3), &ultrasonic, i);
+				
+				if((ultrasonic.distance[i][j]>minDistLim)&(ultrasonic.distance[i][j]<11.2)){
+					printf("SR Obj %x distance (m) : %f \r\n", j+1, ultrasonic.distance[i][j]);  
+					ultrasonic.objectIsDetected[i] = true;
+				}
+				
+				if(j == NUMBER_OBJ_DETECTED-1 && ultrasonic.objectIsDetected[i] == false){
+					printf("change to LR \r\n");
+				}
 			}
 			
+			//if failed to read short range, change to long range
+			if(ultrasonic.objectIsDetected[i] == false || alwaysLongRangeMode == true){
+				ultrasonicCmd(LONG_DIST_MEASUREMENT,NUMBER_OBJ_DETECTED,ultrasonic.address[i]);
+				//interval between burst for long range 
+				delay_ms(35); // maximum record length is 65ms, so delay within that margin
+				pullUltrasonicMeasResult(false,ultrasonic.address[i]);
+				
+				for(byte j=0; j < NUMBER_OBJ_DETECTED; j++){
+					ultrasonic.distance[i][j] = printUltrasonicMeasResult(0 + (j * 3), &ultrasonic, i);
+					ultrasonic.width[i][j] = printUltrasonicMeasResult(1 + (j * 3), &ultrasonic, i);
+					ultrasonic.peak[i][j] = printUltrasonicMeasResult(2 + (j * 3), &ultrasonic, i);
+					
+					if((ultrasonic.distance[i][j]>minDistLim)&(ultrasonic.distance[i][j]<11.2)){
+						printf("LR Obj %x distance (m) : %f \r\n", j+1, ultrasonic.distance[i][j]);  
+						ultrasonic.objectIsDetected[i] = true;
+					}else if(ultrasonic.distance[i][j] == 0){
+						printf("Error reading measurement result  \r\n");
+					}else if(j == NUMBER_OBJ_DETECTED-1 &&  ultrasonic.objectIsDetected[i] == false){
+						printf("No object!!!  \r\n");
+					}
+				}
+			}
+			
+			//reset objectIsDetected variable to false
+			ultrasonic.objectIsDetected[i] = false;
 		}
-		
-		
-//		
-//		//if failed to read short range, change to long range
-//		if(objectDetected[uartAddrUpdate] == false){
-//			ultrasonicCmd(1,1,uartAddrUpdate);
-//			//interval between burst for long range 
-//			delay_ms(35); // maximum record length is 65ms, so delay within that margin
-//			pullUltrasonicMeasResult(false,uartAddrUpdate);
-//			TempDis = (ultraMeasResult[1]<<8) + ultraMeasResult[2];
-//			TempWidth = ultraMeasResult[3];
-//			TempDis2 = (TempDis/2*0.000001*speedSound) - digitalDelay;
-//			TempWidth2= TempWidth * 16;
-
-//			if((TempDis2<11.2)&&(TempDis2>0))
-//			{
-//				objectDetected[uartAddrUpdate] = true;
-//				
-//			}else if(TempDis2 == 0)
-//			{
-//			}else{
-//				printf("No object!!!\n");
-//			}
-//		}
-
-//		//just value final output objDist and objWidth once when short distance detect fail.
-//		if(objectDetected[uartAddrUpdate] == false){
-//			printf("no project or ultrasonic error\n");
-//		}else{
-//			objDist[uartAddrUpdate] = TempDis2;
-//			objWidth[uartAddrUpdate] = TempWidth2;
-//		}
-//		
-//		objectDetected[uartAddrUpdate] =false;
 	}
 }
 

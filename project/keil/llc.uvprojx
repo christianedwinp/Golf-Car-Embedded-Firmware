@@ -570,11 +570,6 @@
               <FilePath>..\..\bsp\src\PGA460_USSC.c</FilePath>
             </File>
             <File>
-              <FileName>stack.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\bsp\src\stack.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_eps.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\bsp\src\bsp_eps.c</FilePath>

@@ -578,7 +578,7 @@ void defaultPGA460(byte xdcr,byte addr)
 byte registerRead(byte addr,short uartIndex)
 {
 	byte data = 0x00;
-	byte temp = 0;
+	//byte temp = 0;
 	
 	if (comm == 2)
 	{
@@ -617,7 +617,7 @@ byte registerRead(byte addr,short uartIndex)
 		   }
 		   else
 		   {
-			   temp = read();
+			   byte temp = read();
 		   }
 		}
 	}
@@ -1095,7 +1095,7 @@ bool pullUltrasonicMeasResult(bool busDemo,short uartIndex)
 				if (busDemo == false)
 				{
 					// the data didn't come in - handle the problem here
-					printf("ERROR - Did not receive measurement results!\n");
+					printf("ERROR - Did not receive measurement results! \r\n");
 				}
 				return false;
 			}
@@ -1146,11 +1146,15 @@ bool pullUltrasonicMeasResult(bool busDemo,short uartIndex)
  |
  |  Returns:  double representation of distance (m), width (us), or amplitude (8-bit)
  *-------------------------------------------------------------------*/
-double printUltrasonicMeasResult(byte umr,short uartIndex)
+double printUltrasonicMeasResult(byte umr, Stack *ultrasonic, short index)
 {
-	int speedSound = 343; // 343 degC at room temperature
-	double objReturn = 0;
-	double digitalDelay = 0.00005*343;
+	//original format : 
+	//int speedSound = 343; // 343 degC at room temperature
+	//double digitalDelay = 0.00005*343;
+	
+	int speedSound = ultrasonic->speedOfSound[index];
+	double digitalDelay = ultrasonic->digitalDelay[index];
+	double objReturn = 0;	
 	uint16_t objDist = 0;
 	uint16_t objWidth = 0;
 	uint16_t objAmp = 0;
@@ -1377,7 +1381,7 @@ byte pullEchoDataDump(byte element,short uartIndex)
 	{
 		if (element == 0)
 		{
-			byte temp = 0;
+			//byte temp = 0;
 			Usart_Flush();
 			
 			if (comm == 2)
@@ -1409,7 +1413,7 @@ byte pullEchoDataDump(byte element,short uartIndex)
 				   }
 				   else
 				   {
-					   temp = read();
+					   byte temp = read();
 				   }
 			   }
 			   regAddr++;
@@ -1622,7 +1626,7 @@ double runDiagnostics(byte run, byte diag,short uartIndex)
 bool burnEEPROM(short uartIndex)
 {
 	byte burnStat = 0;
-	byte temp = 0;
+	//byte temp = 0;
 	bool burnSuccess = false;
 	
 	if (comm != 1 || comm != 3)
@@ -1678,7 +1682,7 @@ bool burnEEPROM(short uartIndex)
 			   }
 			   else
 			   {
-				   temp = read();
+				   byte temp = read();
 			   }
 			}
 		}

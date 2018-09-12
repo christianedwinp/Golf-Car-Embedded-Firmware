@@ -12,13 +12,13 @@ double Stack_Top(Stack *S)
         printf("Error: stack empty\n");
         return -1;
     } 
-    return S->data[S->size-1];
+    return S->tempMeas[S->size-1];
 }
 
 void Stack_Push(Stack *S, double d, byte addr)
 {
     if (S->size < STACK_MAX){
-        S->data[S->size++] = d;
+        S->tempMeas[S->size++] = d;
 				S->address[S->size++] = addr;
     }else{
         printf("Error: stack full \n");
@@ -36,7 +36,7 @@ void Stack_Pop(Stack *S)
 double Stack_Avg (Stack *S){
 	double sum = 0;
   for(int i=0; i < S->size; i++){
-      sum += S->data[i];
+      sum += S->tempMeas[i];
   }	
 	return (sum/S->size); 
 }

@@ -37,6 +37,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <bsp_ultrasonic.h>
 #define  byte unsigned char
 byte pullEchoDataDump(byte element,short uartIndex);
 byte registerRead(byte Regaddr, short uartIndex);
@@ -56,7 +57,7 @@ void thresholdBulkRead(byte preset,short uartIndex);
 void thresholdBulkWrite(byte p1ThrMap[], byte p2ThrMap[],short uartIndex);
 bool burnEEPROM(short uartIndex);
 bool pullUltrasonicMeasResult(bool busDemo,short uartIndex);
-double printUltrasonicMeasResult(byte umr,short uartIndex);
+double printUltrasonicMeasResult(byte umr,Stack *ultrasonic, short index);
 double runDiagnostics(byte run, byte diag,short uartIndex);
 double triangulation(double a, double b, double c);
 
