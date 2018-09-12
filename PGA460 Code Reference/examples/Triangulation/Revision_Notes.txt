@@ -1,0 +1,4 @@
+Triangulation.ino [RevA]
+•	Corrected leg length reference of virtual triangle for the receive-only module based on the time-of-flight measurements to improve triangulation accuracy.
+•	When a bulk time varying gain broadcast command is used, the time varying gain values are actually updated, not the thresholds.
+•	When a bulk threshold broadcast command is used, the threshold values are actually updated, not the time varying gain.

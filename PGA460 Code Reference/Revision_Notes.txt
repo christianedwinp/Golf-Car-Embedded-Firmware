@@ -1,0 +1,41 @@
+FILES: PGA460_USSC.cpp/.h
+
+1.0.0: [2017-02-28] 
+Initial release.
+
+1.0.1: [2017-05-26] 
+Fixed bug pertaining to ultrasonic measurement result's time-of-flight readout.
+
+1.0.2: [2017-06-01] 
+Included support for the PGA460 Time Command Interface.
+
+1.0.3: [2017-08-18] 
+Optimized library code, and added block comments for improved pseudo code description.
+Added support for PGa460 One-Wire UART communication.
+Added support for PGA460 Time Command Interface communication.
+Added busDemo.ino sketch to Examples.
+Added block comments for improved pseudo code description.
+
+1.0.4: [2017-11-07] 
+Optimized library code size, and fixed minor bugs.
+
+1.0.5: [2017-11-30] 
+Added triangulation.ino sketch to Examples.
+Fixed bug pertaining to corrupt zip file downloadable.
+
+1.0.6: [2017-12-01] 
+Improved accuracy of triangulation calculation.
+
+1.0.7: [2017-12-11] 
+Added support for PGA460 SPI (synchronous mode) communication in GetDistance.ino sketch.
+Added 'p' character COM terminal input to PAUSE or RESUME main loop().
+Improved COM terminal serial interrupt detection while main loop() runs.
+
+1.0.8: [2018-03-26]
+Added register read and write commands.
+Added automatic thresholding command for no-object burst/listen command.
+Added ability to copy threshold to EEPROM, by storing a single preset's threshold values into USER_DATA1-16.
+Added AutosetThreshold.ino sketch to Examples.
+Added threshold bulk read and write commands.
+The first data byte returned by the get echo data dump is no longer the diagnostic field.
+Updated all PGA460 SPI library functions to include "pga460" in the function name to prevent conflict with the default/other SPI libraries.

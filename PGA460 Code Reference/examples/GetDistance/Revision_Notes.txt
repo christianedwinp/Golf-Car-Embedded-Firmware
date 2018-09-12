@@ -1,0 +1,23 @@
+GetDistance.ino [RevA]
+•	Energia min distance updated to correctly reflects units of 'm', not 'cm'
+•	Enabled more than 1 object to be detected; defaulted to ‘8’
+•	Threshold is not hardcoded in library files to ignore <50cm regardless of user input from COM terminal
+•	Added command cycle delay on COM control
+•	Added number of objects to detect on COM control
+•	UART address previously exclusively compatible with ‘0’. Master can now target any PGA460 UART address of 0-7
+•	Option to skip COM configurations
+•	MA40H1SR driver preset driver current limit now defaults to 50mA
+
+GetDistance.ino [RevB]
+•	Pre-defined MA40H1S-R preset 2 pulse count corrected to 16, not 0.
+•	Pre-defined MA40H1S-R preset 2 digital gain multiplier increased to x4, not x2.
+•	Command byte's UART_ADDR will update to the value defined the defaultPGA460 bulk EEPROM write function for subsequent commands
+•	Added support for One-Wire UART (OWU) and Time Command Interface (TCI) communication modes.
+•	Baud selector updated to switch-case statement, rather than multiplier.
+•	Included listen-only commands for echo data dump.
+•	Updated COM terminal instructions and input options.
+
+GetDistance.ino [RevC]
+•	Included support for SPI (synchronous mode) communication.
+•	User input of character 'p' through COM terminal pauses GetDistance.ino sketch execution.
+•	Removed redundant while(1) loop from the main loop() function to enable SerialEvent check.

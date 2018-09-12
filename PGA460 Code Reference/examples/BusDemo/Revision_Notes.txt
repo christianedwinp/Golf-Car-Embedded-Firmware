@@ -1,0 +1,3 @@
+BusDemo.ino [RevA]
+•	When a bulk time varying gain broadcast command is used, the time varying gain values are actually updated, not the thresholds.
+•	When a bulk threshold broadcast command is used, the threshold values are actually updated, not the time varying gain.
