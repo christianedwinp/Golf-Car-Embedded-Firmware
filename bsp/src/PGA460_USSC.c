@@ -38,8 +38,6 @@
 #include "bsp_time.h"
 #include "pin_configuration.h"
 #include "math.h"
-//#include "PGA460_SPI.h"
-//#include "Energia.h"
  
 /*------------------------------------------------- Global Variables -----
  |  Global Variables
@@ -217,7 +215,9 @@
  |  Parameters:
  |		mode (IN) 	-- sets communicaiton mode. Check reference folder for other potential communication interface, this project support only UART or OWU communication
  |			0=UART 
- |			1=OWU 
+ |			1=TCI (N/A) 
+ |			2=OWU 
+ |			3=SPI (N/A)
  | 		baud (IN) 	-- PGA460 accepts a baud rate of 9600 to 115.2k bps
  | 		setAddr (IN)-- to trigger SetPGAAdress function
  |			0=Have set up uart address of each ultrasonic module in the bus 
@@ -256,7 +256,7 @@ void initSTM32F1PGA460(byte mode, uint32_t baud, int setAddress, byte uartAddrUp
 	TEST_LED_PORT -> BRR = TEST_LED_1;
 	
 	// set communication mode flag
-	if (mode < 2) // 0=UART, 1=OWU, 2=TCI, 3=SPI
+	if (mode < 4) // 0=UART, 1=TCI, 2=OWU, 3=SPI
 	{
 		comm = mode;
 	}else{
@@ -269,20 +269,18 @@ void initSTM32F1PGA460(byte mode, uint32_t baud, int setAddress, byte uartAddrUp
 		case 0: // UART Mode
 			BSP_Usart2Init(baud);	
 			break;
-		case 1: //OWU setup (part I)
+		case 1: //TCI Mode	
+			// NOT AVAILABLE
+			break;	
+		case 2: //OWU setup (part I)
 			BSP_Usart2Init(baud);	
 			PULSE_P1 = 0x80 | PULSE_P1; // update IO_IF_SEL bit to '1' for OWU mode for bulk EEPROM write
-			break;	
-		case 2: //TCI Mode	
-			// NOT AVAILABLE
 			break;				
 		case 3: // SPI mode			
 			//NOT AVAILABLE
 			break;
 		default: break;
 	}
-	
-	
 	
 	if(setAddress){
 		uint8_t previousAddr = 0;
@@ -335,13 +333,18 @@ void initSTM32F1PGA460(byte mode, uint32_t baud, int setAddress, byte uartAddrUp
 				uartAddrConnected = rd & 0xe0;
 				byte buf10[5] = {syncByte, SRW[uartAddrConnected>>5], regAddr, regData, calcChecksum(SRW[uartAddrConnected>>5])};
 				Usart2Send(buf10, sizeof(buf10));	
+				delay_ms(50);	
+				
+				//WARNING: LIN COMMUNICATION
+				//set TX line High I guess..
+				//pinMode(COM_SEL, OUTPUT);  digitalWrite(COM_SEL, HIGH);
 				flag = 1;
 			}else if(i == 7 && flag != 1){
 				printf("OWU setup failed!\n");
 			}
 		}
 	}	
-	delay_ms(50);	
+	
 	
 	//LED status indication
 	for(int loops = 0; loops < 5; loops++){

@@ -73,7 +73,9 @@ double speedSoundByTemp(double temp){
  |  Parameters:
  |		mode (IN) -- sets communication mode. 
  |			0=UART 
- |			1=TCI 
+ |			1=TCI (N/A) 
+ |			2=OWU 
+ |			3=SPI (N/A)
  | 		baud (IN) -- PGA460 accepts a baud rate of 9600 to 115.2k bps
  | 		uartAddrUpdate (IN) -- PGA460 address range from 0 to 7
  |			if configPGA460 param 0, this param has to be filled with the address of ultrasonic to be initialize
@@ -151,7 +153,15 @@ bool configPGA460(byte mode, uint32_t baud, byte uartAddrUpdate, int detectAddr,
 			
 			//run echo data dump if necessary
 			if(runEDD){
-				printf("Address %x - EED: ",uartAddrConnected);
+				printf("Address %x - SHORT RANGE EED: ",uartAddrConnected);
+				runEchoDataDump(SHORT_DIST_MEASUREMENT, uartAddrConnected); //run prset 1 
+				for (int n = 0; n < 128; n++){
+					byte echoDataDumpElement = pullEchoDataDump(n,uartAddrConnected);
+					printf("%d ",echoDataDumpElement);
+				}
+				printf("\r\n");
+				
+				printf("Address %x - LONG RANGE EED: ",uartAddrConnected);
 				runEchoDataDump(LONG_DIST_MEASUREMENT, uartAddrConnected); //run prset 1 
 				for (int n = 0; n < 128; n++){
 					byte echoDataDumpElement = pullEchoDataDump(n,uartAddrConnected);
@@ -228,14 +238,14 @@ bool initPGA460(byte mode, uint32_t baud, int temperatureSetting, int detectAddr
 			initThresholds(THRESHOLD_CUSTOM,uartAddrConnected);
 			//bulk user EEPROM write
 			defaultPGA460(TRANSDUCER_CUSTOM,uartAddrConnected);
-			//bulk TVG write
-			initTVG(AGR_52_84,TVG_50,uartAddrConnected);
-			//with/without run system diagnostic option, need to get temperature to determine speed of sound
+			//bulk TVG write : 55db - 56 db
+			initTVG(AGR_52_84,TVG_CUSTOM_3,uartAddrConnected);
+			//with or without run system diagnostic option, need to get temperature to determine speed of sound
 			if(temperatureSetting == ROOM_TEMPERATURE){
-				temperature = 27;
+				temperature = 23;
 			}else{
 				temperature = runDiagnostics(0,2,uartAddrConnected);
-			}		
+			}			
 			double speedOfSound = speedSoundByTemp(temperature);
 			double digitalDelay = 0.00005 * speedOfSound;
 			Stack_Push(tempStack, temperature, speedOfSound, digitalDelay, uartAddrConnected);
@@ -263,11 +273,19 @@ bool initPGA460(byte mode, uint32_t baud, int temperatureSetting, int detectAddr
 			
 			//run echo data dump if necessary
 			if(runEDD){
-				printf("Address %x - EED: ",uartAddrConnected);
-				runEchoDataDump(1, uartAddrConnected); //run prset 1 
+				printf("Address %x - SHORT RANGE EED: ",uartAddrConnected);
+				runEchoDataDump(SHORT_DIST_MEASUREMENT, uartAddrConnected); //run prset 1 
 				for (int n = 0; n < 128; n++){
 					byte echoDataDumpElement = pullEchoDataDump(n,uartAddrConnected);
-					printf("%d, ",echoDataDumpElement);
+					printf("%d ",echoDataDumpElement);
+				}
+				printf("\r\n");
+				
+				printf("Address %x - LONG RANGE EED: ",uartAddrConnected);
+				runEchoDataDump(LONG_DIST_MEASUREMENT, uartAddrConnected); //run prset 1 
+				for (int n = 0; n < 128; n++){
+					byte echoDataDumpElement = pullEchoDataDump(n,uartAddrConnected);
+					printf("%d ",echoDataDumpElement);
 				}
 				printf("\r\n");
 			}
@@ -293,11 +311,19 @@ bool initPGA460(byte mode, uint32_t baud, int temperatureSetting, int detectAddr
 
 void autoThresholdRun(byte mode, byte uartIndex, byte noiseMargin, byte thrTimeIndex, byte thrPoints, int copyThr){
 	delay_ms(500);
-	printf("Automatically configuring the preset's threshold map... \r\n");
 	autoThreshold(mode,noiseMargin*8,thrTimeIndex,thrPoints,1,uartIndex);
-
+	
+	//print EED which based for autothreshold
+	printf("Address %x - EED: ",uartIndex);
+	for (int n = 0; n < 128; n++){
+		byte echoDataDumpElement = pullEchoDataDump(n,uartIndex);
+		printf("%d ",echoDataDumpElement);
+	}
+	printf("\r\n");
+	
+	//inform user if they opt for copy existing threshold to user eeprom space for backup
 	if(copyThr == 0 || copyThr == 2){
-		printf("Copying threshold map to EEPROM memory space... \r\n");
+		printf("Copying existing threshold map to user EEPROM memory space... \r\n");
 		eepromThreshold(mode+1,false, uartIndex);
 	}
 	
@@ -314,6 +340,7 @@ void autoThresholdRun(byte mode, byte uartIndex, byte noiseMargin, byte thrTimeI
 		}
 	}
 	printf("\r\n Autoset Threshold Finish \r\n");
+	printf("\r\n");
 }
 
 

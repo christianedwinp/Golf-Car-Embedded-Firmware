@@ -26,7 +26,7 @@ struct Stack ultrasonic = {{0,0,0,0,0,0,0,0},
 													 {false,false,false,false,false,false,false,false},
 													 0}; 
 byte INTERFACE_UART = 0, INTERFACE_TCI = 1, INTERFACE_OWU = 2, INTERFACE_SPI = 3;
-byte P1_BL = 0, P2_BL = 1, P1_LO = 2, P2_LO = 3;
+byte P1_BL = 0, P2_BL = 1, P1_L = 2, P2_L = 3;
 extern 	byte ultraMeasResult[34+3];
 
 //USER PARAMETER : change according to your need
@@ -35,7 +35,7 @@ extern 	byte ultraMeasResult[34+3];
 #define GET_DISTANCE 1													 
 short NEW_UART_ADDRESS = 1;
 #define NUMBER_OBJ_DETECTED 1
-double minDistLim = 0.1;
+double minDistLim = 0.3;
 bool alwaysLongRangeMode = false;			
 													 
 /**@ ONLY FOR DEBUG
@@ -112,20 +112,13 @@ int main(void)
 	
 	while (1)
 	{
-		//EXPERIMENT PROGRAM
+		//CALLIBRATION PROGRAM
 		if(CONFIGURE_THRESHOLD_GAIN){
-			for(int i=0; i < ultrasonic.size; i++){
-				//Threshold Mapping
-				autoThresholdRun(P1_BL, ultrasonic.address[0], 2, 7, 12, 2);//mode, uartIndex, noiseMargin, thrTimeIndex, thrPoints, loops, copyThr
-				
-				printf("Address %x - EED: ",ultrasonic.address[0]);
-				runEchoDataDump(SHORT_DIST_MEASUREMENT, ultrasonic.address[0]); //run prset 1 
-				for (int n = 0; n < 128; n++){
-					byte echoDataDumpElement = pullEchoDataDump(n,ultrasonic.address[0]);
-					printf("%d ",echoDataDumpElement);
-				}
-				printf("\r\n");
-			}
+			printf("PRESET 1 AUTOTHRESHOLD \r\n");
+			autoThresholdRun(P1_BL, ultrasonic.address[0], 2, 7, 12, 2);//mode, uartIndex, noiseMargin, thrTimeIndex, thrPoints, loops, copyThr
+			
+			printf("PRESET 2 AUTOTHRESHOLD \r\n");
+			autoThresholdRun(P2_BL, ultrasonic.address[0], 2, 7, 12, 2);
 		}
 		
 		//GET DISTANCE PROGRAM
@@ -146,7 +139,7 @@ int main(void)
 						//calibration for measurement 30cm - 45cm
 						if(ultrasonic.distance[i][j] >= 0.387 && ultrasonic.distance[i][j] < 0.464){
 							ultrasonic.distance[i][j] = ultrasonic.distance[i][j] - ((0.4644-ultrasonic.distance[i][j]) * 0.3578 + 0.0044);
-						}else if(ultrasonic.distance[i][j] >= 0.316 && ultrasonic.distance[i][j] < 0.387){
+						}else if(ultrasonic.distance[i][j] >= 0.31 && ultrasonic.distance[i][j] < 0.387){
 							ultrasonic.distance[i][j] = ultrasonic.distance[i][j] - ((ultrasonic.distance[i][j]-0.3168) * 0.4329 + 0.01682);
 						}
 						
