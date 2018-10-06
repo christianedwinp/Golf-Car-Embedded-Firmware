@@ -495,47 +495,36 @@ void defaultPGA460(byte xdcr,byte addr)
 		   USER_DATA18 = 0x00;
 		   USER_DATA19 = 0x00;
 		   USER_DATA20 = 0x00;
-			TVGAIN0 = 0xAA; //记录echo信号的开始时间为2400us,时变增益 	,这个开始时间怎么理解，是在发射驱动信号的2400us吗，还是其他什么
-		   TVGAIN1 = 0xAA;//delta时间值
-		   TVGAIN2 = 0xAA;//delta时间值，一共六个时间点
-		   TVGAIN3 = 0x51;//分段增益的第 1 2段的数值
-		   TVGAIN4 = 0x45;//分段增益的第 3 4段的数值
-		   TVGAIN5 = 0x14;//分段增益的第 5段的数值，第0段是固定数值
-		   TVGAIN6 = 0x50; // FREQ_SHIFT设置为0 ，BPF_A2_xSB, BPF_A3_xSB, and BPF_B1_xSB的数值由PGA自己计算并overwrite
-		   INIT_GAIN = 0x54; //这个参数是将模拟前端增益设置成固定时变增益的增益值
-		   FREQUENCY  = 0x32; //transducer的驱动频率0x32=40k,0x6e=52k,,Frequency = 0.2 * FREQ + 30 [kHz]=52k
-		   DEADTIME = 0xA0;   //死区时间，FETA与FETB的死区时间，用来在FET 的RDSON模式下的电流击穿
-													//在这里将死区时间设置为了0，这里还设置了比较器的抗尖峰脉冲的的周期数
+			 TVGAIN0 = 0xEE;//TVG_T0 TVG_T1
+		   TVGAIN1 = 0xEE;//TVG_T2 TVG_T3
+		   TVGAIN2 = 0xEE;//TVG_T4 TVG_T5
+			 TVGAIN3 = 0xC3;//TVG_G1[7:2] TVG_G2[1:0]
+			 TVGAIN4 = 0x0C;//TVG_G2[7:4] TVG_G3[3:0]
+			 TVGAIN5 = 0x30;//TVG_G3[7:6] TVG_G4[5:0]
+			 TVGAIN6 = 0xC0;//TVG_G5[7:2] RESERVED[1] FREQ_SHIFT[0] 
+		   INIT_GAIN = 0x50; //BPF_BW[7:6] GAIN_INIT[5:0]
+		   FREQUENCY  = 0x2E; //Transducer Frequency = 0.2 * FREQ + 30 [kHz]
+		   DEADTIME = 0x50;   //THR_CMP_DEGLITCH[7:4] PULSE_DT[3:0] -> deglitch period = THR_CMP_DEGLITCH * 8 uS
 		   if (comm == 2)
 		   {
-				PULSE_P1 = 0x80 | 0x08; //preset1的pulse的数值，这里是8个脉冲，这里设置成了one wire usart模式
+				PULSE_P1 = 0x80 | 0x08; 
 		   }
 		   else
 		   {
-				PULSE_P1 = 0x08; //preset1的pulse的数值，这里是8个脉冲，
-												 //这里设置成了usart模式，IO transceiver enabled
-												 //用于驱动短距离物体的检测
+				 PULSE_P1 = 0x08; //Preset 1 : 8 pulse
 		   }
-		   PULSE_P2 = 0x10 + (addr<<5);  //preset2的脉冲数为16个，一般用于驱动长距离物体的检测
-												 //这里把PGA的串口地址设为0，我们在这里将其更改为
-												 //其他的串口地址
-		   CURR_LIM_P1 = 0x40; //使能preset1和preset2的电流限制，preset1的电流限制为7 * CURR_LIM1 + 50 [mA] = 498mA
-		   CURR_LIM_P2 = 0x7f; //设置低通滤波器的截止频率为LPF_CO + 1 [kHz] = 2KHz,
-														//并设置preset2的电流限制为 500mA，仿真中讲电流限制设置为300mA
-														//的echo就可以有很高的电压了
-		   REC_LENGTH = 0x19;  //prset1的echo的记录时间为4.096 * (P1_REC + 1) [ms] = 8.192ms
-														//preset2的记录时间为40.96ms
-		   FREQ_DIAG = 0x33;    //在发射信号pulse结束后300us开启频率测量诊断，持续时间为3*3/Freq = 9/40K = 0.225ms
-		   SAT_FDIAG_TH = 0xEE;//失能preset1的非线性指数功能
-		   FVOLT_DEC = 0x7C;   //失能preset1的非线性指数功能，电压上限为28.3V，这是芯片内部的电压过压保护阈值
-			 //低功率进入休眠的时间为4s,电流检测的阈值为3，单位不知
-		   DECPL_TEMP = 0x4F;//AFE的时变增益偏置为52到84dB 	,关闭低功率模式，选择为时间衰减，相隔时间为4096*（1+0xff）us= 65.536ms
-			 //目的是在pulse发射结束后快速衰减下来，断开与变压器的连接
-		   DSP_SCALE = 0x00;//设置非线性指数比例的timeoffset为TH9,指数为1.5，噪声的水平系数为0
+		   PULSE_P2 = 0x10 + (addr<<5); // Preset 2 : 16 pulses 
+		   CURR_LIM_P1 = 0x40; 
+		   CURR_LIM_P2 = 0x7f; 
+		   REC_LENGTH = 0x29; //P1_REC[7:4] P2_REC[3:0] -> Record time = 4.096 * (P1_REC or P2_REC value + 1) [ms]
+		   FREQ_DIAG = 0x33;   
+		   SAT_FDIAG_TH = 0xEE;
+		   FVOLT_DEC = 0x7C;   
+		   DECPL_TEMP = 0x4F;
+		   DSP_SCALE = 0x28;
 		   TEMP_TRIM = 0x00;
-		   P1_GAIN_CTRL = 0x09;//从第九个点开始启动数字增益，长距离LR的系数为X2，短距离的系数是x2
-		   P2_GAIN_CTRL = 0x09;//从第九个点开始启动数字增益，长距离LR的系数为X2，短距离的系数是x2
-			// insert custom user EEPROM listing
+		   P1_GAIN_CTRL = 0x08; //P1_DIG_GAIN_LR_ST[7:6] P1_DIG_GAIN_LR[5:3] P1_DIG_GAIN_SR[2:0]
+		   P2_GAIN_CTRL = 0x09; //P2_DIG_GAIN_LR_ST[7:6] P2_DIG_GAIN_LR[5:3] P2_DIG_GAIN_SR[2:0]
 		}		
 		default: break;
 	}
@@ -772,39 +761,39 @@ void initThresholds(byte thr,short uartIndex)
 		   P2_THR_15 = 0x00;
 		break;
 		
-		case 3: //Custom
-		   P1_THR_0 = 0x41;
-		   P1_THR_1 = 0x44;
-		   P1_THR_2 = 0x10;
-		   P1_THR_3 = 0x06;
-		   P1_THR_4 = 0x69;
-		   P1_THR_5 = 0x99;
-		   P1_THR_6 = 0xDD;
-		   P1_THR_7 = 0x4C;
-		   P1_THR_8 = 0x31;
-		   P1_THR_9 = 0x08;
-		   P1_THR_10 = 0x42;
-		   P1_THR_11 = 0x18;
-		   P1_THR_12 = 0x20;
-		   P1_THR_13 = 0x24;
-		   P1_THR_14 = 0x2A;
-		   P1_THR_15 = 0x00;
-		   P2_THR_0 = 0x41;
-		   P2_THR_1 = 0x44;
-		   P2_THR_2 = 0x10;
-		   P2_THR_3 = 0x06;
-		   P2_THR_4 = 0x09;
-		   P2_THR_5 = 0x99;
-		   P2_THR_6 = 0xDD;
-		   P2_THR_7 = 0x4C;
-		   P2_THR_8 = 0x31;
-		   P2_THR_9 = 0x08;
-		   P2_THR_10 = 0x42;
-		   P2_THR_11 = 0x24;
-		   P2_THR_12 = 0x30;
-		   P2_THR_13 = 0x36;
-		   P2_THR_14 = 0x3C;
-		   P2_THR_15 = 0x00;
+		case 3: //Custom 
+		   P1_THR_0 = 0x66;  //TH_P1_T1    TH_P1_T2
+		   P1_THR_1 = 0x33;  //TH_P1_T3    TH_P1_T4
+		   P1_THR_2 = 0x77;  //TH_P1_T5    TH_P1_T6
+		   P1_THR_3 = 0x77;  //TH_P1_T7    TH_P1_T8
+		   P1_THR_4 = 0x77;  //TH_P1_T9    TH_P1_T10
+		   P1_THR_5 = 0x77;  //TH_P1_T11   TH_P1_T12
+			 P1_THR_6 = 0xFF;  //TH_P1_L1[7:3] TH_P1_L2[2:0]
+			 P1_THR_7 = 0xF4;  //TH_P1_L2[7:6] TH_P1_L3[5:1] TH_P1_L4[0]
+			 P1_THR_8 = 0x31;  //TH_P1_L4[7:4] TH_P1_L5[3:0]
+			 P1_THR_9 = 0x8C;  //TH_P1_L5[7]   TH_P1_L6[6:2] TH_P1_L7[1:0]
+			 P1_THR_10 = 0x63; //TH_P1_L7[7:5] TH_P1_L8[4:0]
+		   P1_THR_11 = 0x1B; //TH_P1_L9
+		   P1_THR_12 = 0x1B; //TH_P1_L10
+		   P1_THR_13 = 0x1B; //TH_P1_L11
+		   P1_THR_14 = 0x1B; //TH_P1_L12
+			 P1_THR_15 = 0x07; //RESERVED[7:4] TH_P1_OFF[3:0]
+		   P2_THR_0 = 0xB9;
+		   P2_THR_1 = 0x8C;
+		   P2_THR_2 = 0xCC;
+		   P2_THR_3 = 0xCC;
+		   P2_THR_4 = 0xCB;
+		   P2_THR_5 = 0xBB;
+		   P2_THR_6 = 0x7A;
+		   P2_THR_7 = 0x48;
+		   P2_THR_8 = 0x42;
+		   P2_THR_9 = 0x10;
+		   P2_THR_10 = 0x85;
+		   P2_THR_11 = 0x36;
+		   P2_THR_12 = 0x3D;
+		   P2_THR_13 = 0x46;
+		   P2_THR_14 = 0x4C;
+		   P2_THR_15 = 0x06;
 		break;
 		
 		default: break;
@@ -929,6 +918,36 @@ void initTVG(byte agr, byte tvg,short uartIndex)
 		   TVGAIN6 = 0xC0;	
 		break;
 		
+		case 3: //Custom Levels : increment of 0.5db/ms, GAIN_INIT 63.5db
+		   TVGAIN0 = 0xFF;//TVG_T0 TVG_T1
+		   TVGAIN1 = 0xFF;//TVG_T2 TVG_T3
+		   TVGAIN2 = 0xFF;//TVG_T4 TVG_T5
+			 TVGAIN3 = 0x70;//TVG_G1[7:2] TVG_G2[1:0]
+			 TVGAIN4 = 0x6B;//TVG_G2[7:4] TVG_G3[3:0]
+			 TVGAIN5 = 0xB4;//TVG_G3[7:6] TVG_G4[5:0]
+			 TVGAIN6 = 0xF0;//TVG_G5[7:2] RESERVED[1] FREQ_SHIFT[0] 
+		break;
+		
+		case 4: //Custom Levels : constant gain on 55 db with AGR 32-64db
+		   TVGAIN0 = 0xFF;//TVG_T0 TVG_T1
+		   TVGAIN1 = 0xFF;//TVG_T2 TVG_T3
+		   TVGAIN2 = 0xFF;//TVG_T4 TVG_T5
+			 TVGAIN3 = 0xB6;//TVG_G1[7:2] TVG_G2[1:0]
+			 TVGAIN4 = 0xDB;//TVG_G2[7:4] TVG_G3[3:0]
+			 TVGAIN5 = 0x6D;//TVG_G3[7:6] TVG_G4[5:0]
+			 TVGAIN6 = 0xB4;//TVG_G5[7:2] RESERVED[1] FREQ_SHIFT[0] 
+		break;
+		
+		case 5: //Custom Levels : increment of 0.5db/ms, AGR 52-84 db GAIN_INIT 60db
+		   TVGAIN0 = 0xDE;//TVG_T0 TVG_T1
+		   TVGAIN1 = 0xEE;//TVG_T2 TVG_T3
+		   TVGAIN2 = 0xFF;//TVG_T4 TVG_T5
+			 TVGAIN3 = 0x55;//TVG_G1[7:2] TVG_G2[1:0] 55
+			 TVGAIN4 = 0xB8;//TVG_G2[7:4] TVG_G3[3:0]
+			 TVGAIN5 = 0xE9;//TVG_G3[7:6] TVG_G4[5:0]
+			 TVGAIN6 = 0xBC;//TVG_G5[7:2] RESERVED[1] FREQ_SHIFT[0] 
+		break;
+		
 		default: break;
 	}	
 	
@@ -1048,6 +1067,12 @@ void ultrasonicCmd(byte cmd, byte numObjUpdate,short uartIndex)
 		//do nothing
 	}
 	
+	if(cmd == 0 || cmd == 2){
+		delay_ms(13);
+	}else{
+		delay_ms(40);
+	}
+
 	return;
 }
 
@@ -1341,10 +1366,10 @@ void runEchoDataDump(byte preset,short uartIndex)
 			Usart2Send(buf10, sizeof(buf10));
 		}
 
-		delay_ms(2);
+		delay_ms(10);
 		
 		// run preset 1 or 2 burst and or listen command
-		ultrasonicCmd(preset, 1,uartIndex);	
+		ultrasonicCmd(preset, 1,uartIndex);
 
 		// disbale Echo Data Dump bit
 		regData = 0x00;
@@ -1403,7 +1428,7 @@ byte pullEchoDataDump(byte element,short uartIndex)
 			   buf9[2] = regAddr;
 			   buf9[3] = calcChecksum(SRR[uartIndex]);
 			   Usart2Send(buf9, sizeof(buf9));
-			   delay_us(80);	 
+			   delay_ms(30);	 
 			   
 			   for(int n=0; n<(3+owuShift); n++)
 			   {
@@ -2175,7 +2200,7 @@ void autoThreshold(byte cmd, byte noiseMargin, byte windowIndex, byte autoMax, b
 	for (byte l = 0; l < 12; l++)
 	{
 		eddIndex[l+1] = ((eddMarker[l]/100)*128)/(recTime/100); // divide by 100 for best accuracy in MSP430
-	}	
+	}
 	
 	// downsample the echo data dump based on the number of partitions
 	memset(thrMax, 0x00, 12); // zero thrMax array

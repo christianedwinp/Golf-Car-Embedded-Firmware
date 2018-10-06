@@ -125,7 +125,8 @@ void initPGA460() {
           {
             Serial.print("2. Clock Divider (MHz): 0=16/1, 1=16/2, 2=16/4, 3=16/8, 4=16/16, 5=16/32, 6=16/64, 7=16/128 ... "); break;
           }                          
-        case 2: Serial.print("3. Autoset Threshold Preset Command: 0=P1BL, 1=P2BL, 2=P1LO, 3=P2LO ..."); break;  //case 2: Serial.print("3. P1 and P2 Thresholds: 0=%25, 1=50%, or 2=75% of max ... "); break;   
+        case 2: Serial.print("3. Autoset Threshold Preset Command: 0=P1BL, 1=P2BL, 2=P1LO, 3=P2LO ..."); break;  //Preset 1 Burst Listen, Preset 2 Burst Listen, Preset 1 Listen Only, Preset 2 Listen Only
+        //case 2: Serial.print("3. P1 and P2 Thresholds: 0=%25, 1=50%, or 2=75% of max ... "); break;   
         case 3: Serial.print("4. Autoset Threshold Noise Floor: 8 * BYTE ..."); break;
         case 4: Serial.print("5. Autoset Threshold Time Index: BYTE ..."); break;
         case 5: Serial.print("6. Autoset Threshold Up to Point (12 Total): 0=None, BYTE=MaxPoint, or x=All ..."); break;       
@@ -142,9 +143,7 @@ void initPGA460() {
       {
         while (Serial.available() == 0){}
         inByte = Serial.read();
-         if (inByte==48 || inByte==49 || inByte==50 || inByte==51 ||
-        inByte==52 || inByte==53 || inByte==54 || inByte==55 || 
-        inByte==56 || inByte==57 || inByte==113 || inByte==115 || inByte==120)
+         if (inByte==48 || inByte==49 || inByte==50 || inByte==51 || inByte==52 || inByte==53 || inByte==54 || inByte==55 || inByte==56 || inByte==57 || inByte==113 || inByte==115 || inByte==120)
         {
           validInput = true; // valid input, break while loop       
         }
@@ -197,14 +196,14 @@ void initPGA460() {
               baudRate = inByte; 
             }
             break;
-          case 2: atPc = inByte; break;   
-          case 3: atNf = inByte; break;   
-          case 4: atTi = inByte; break;   
-          case 5: atUp = inByte; break;     
-          case 6: xdcr = inByte; break;
-          case 7: agrTVG = inByte; break;  
-          case 8: fixedTVG = inByte; break;
-          case 9: copyThr = inByte; break;
+          case 2: atPc = inByte; break; //0 = Preset 1 Burst Listen
+          case 3: atNf = inByte; break; //8 * byte  
+          case 4: atTi = inByte; break; //Byte  
+          case 5: atUp = inByte; break; //x=All    
+          case 6: xdcr = inByte; break; //custom transducer or x = skip
+          case 7: agrTVG = inByte; break; //tvg range : 2->52-84db  
+          case 8: fixedTVG = inByte; break; //custom tvg or x = skip
+          case 9: copyThr = inByte; break; //0=Copy, 1=Load, 2=Load&Copy
           case 10: uartAddrUpdate = inByte; break;
           default: break;
         }
@@ -291,6 +290,15 @@ void loop() {                 // put your main code here, to run repeatedly
     Serial.println("Automatically configuring the preset's threhsold map...");
     // runs burst and/or listen command in echo data dump mode
     ussc.autoThreshold(atPc,atNf*8,atTi,atUp,1);
+
+          case 2: atPc = inByte; break; //0 = Preset 1 Burst Listen
+          case 3: atNf = inByte; break; //8 * byte  Autoset Threshold Noise Floor: 8 * BYTE ...
+          case 4: atTi = inByte; break; //Byte   Threshold Time Index
+          case 5: atUp = inByte; break; //x=All    
+          case 6: xdcr = inByte; break; //custom transducer or x = skip
+          case 7: agrTVG = inByte; break; //tvg range : 2->52-84db  
+          case 8: fixedTVG = inByte; break; //custom tvg or x = skip
+          case 9: copyThr = inByte; break; //0=Copy, 1=Load, 2=Load&Copy
 
   // -+-+-+-+-+-+-+-+-+-+-  copy threshold into USER_DATA   -+-+-+-+-+-+-+-+-+-+- //
     // Copy SRAM threhsold to EEPROM, or load EEPROM threshold to SRAM
